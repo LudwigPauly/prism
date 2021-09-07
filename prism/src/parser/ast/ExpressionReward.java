@@ -26,6 +26,8 @@
 
 package parser.ast;
 
+import java.util.List;
+
 import parser.EvaluateContext;
 import parser.Values;
 import parser.visitor.ASTVisitor;
@@ -35,9 +37,7 @@ import prism.PrismException;
 import prism.PrismLangException;
 import prism.RewardGenerator;
 
-import java.util.List;
-
-public class ExpressionReward extends ExpressionQuant
+public class ExpressionReward extends ExpressionQuant<Expression>
 {
 	protected Object rewardStructIndex = null;
 	protected Object rewardStructIndexDiv = null;
@@ -50,9 +50,7 @@ public class ExpressionReward extends ExpressionQuant
 	
 	public ExpressionReward(Expression expression, String relOpString, Expression r)
 	{
-		setExpression(expression);
-		setRelOp(relOpString);
-		setBound(r);
+		super(expression, relOpString, r);
 	}
 
 	// Set methods
@@ -193,6 +191,7 @@ public class ExpressionReward extends ExpressionQuant
 	 * Get info about the operator and bound.
 	 * @param constantValues Values for constants in order to evaluate any bound
 	 */
+	@Override
 	public OpRelOpBound getRelopBoundInfo(Values constantValues) throws PrismException
 	{
 		if (getBound() != null) {
@@ -215,24 +214,6 @@ public class ExpressionReward extends ExpressionQuant
 	}
 	
 	// Methods required for Expression:
-	
-	@Override
-	public boolean isConstant()
-	{
-		return false;
-	}
-
-	@Override
-	public boolean isProposition()
-	{
-		return false;
-	}
-	
-	@Override
-	public Object evaluate(EvaluateContext ec) throws PrismLangException
-	{
-		throw new PrismLangException("Cannot evaluate an R operator without a model");
-	}
 
 	@Override
 	public String getResultName()
@@ -259,12 +240,6 @@ public class ExpressionReward extends ExpressionQuant
 		else {
 			return "Result";
 		}
-	}
-
-	@Override
-	public boolean returnsSingleValue()
-	{
-		return false;
 	}
 
 	// Methods required for ASTElement:
@@ -299,27 +274,19 @@ public class ExpressionReward extends ExpressionQuant
 	// Standard methods
 	
 	@Override
-	public String toString()
+	protected String operatorToString()
 	{
-		String s = "";
-		
-		s += "R" + getModifierString();
+		String rewards = "";
 		if (rewardStructIndex != null) {
-			if (rewardStructIndex instanceof Expression) s += "{"+rewardStructIndex+"}";
-			else if (rewardStructIndex instanceof String) s += "{\""+rewardStructIndex+"\"}";
+			if (rewardStructIndex instanceof Expression) rewards += "{"+rewardStructIndex+"}";
+			else if (rewardStructIndex instanceof String) rewards += "{\""+rewardStructIndex+"\"}";
 			if (rewardStructIndexDiv != null) {
-				s += "/";
-				if (rewardStructIndexDiv instanceof Expression) s += "{"+rewardStructIndexDiv+"}";
-				else if (rewardStructIndexDiv instanceof String) s += "{\""+rewardStructIndexDiv+"\"}";
+				rewards += "/";
+				if (rewardStructIndexDiv instanceof Expression) rewards += "{"+rewardStructIndexDiv+"}";
+				else if (rewardStructIndexDiv instanceof String) rewards += "{\""+rewardStructIndexDiv+"\"}";
 			}
 		}
-		s += getRelOp();
-		s += (getBound()==null) ? "?" : getBound().toString();
-		s += " [ " + getExpression();
-		if (getFilter() != null) s += " "+getFilter();
-		s += " ]";
-		
-		return s;
+		return "R" + getModifierString() + rewards;
 	}
 
 	@Override
