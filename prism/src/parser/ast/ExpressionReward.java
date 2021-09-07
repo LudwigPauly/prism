@@ -36,26 +36,24 @@ import prism.PrismException;
 import prism.PrismLangException;
 import prism.RewardGenerator;
 
-public class ExpressionReward extends ExpressionQuant
+public class ExpressionReward extends ExpressionQuant<Expression>
 {
 	protected Object rewardStructIndex = null;
 	protected Object rewardStructIndexDiv = null;
-	
+
 	// Constructors
-	
+
 	public ExpressionReward()
 	{
 	}
-	
+
 	public ExpressionReward(Expression expression, String relOpString, Expression r)
 	{
-		setExpression(expression);
-		setRelOp(relOpString);
-		setBound(r);
+		super(expression, relOpString, r);
 	}
 
 	// Set methods
-	
+
 	public void setRewardStructIndex(Object o)
 	{
 		rewardStructIndex = o;
@@ -75,7 +73,7 @@ public class ExpressionReward extends ExpressionQuant
 	}
 
 	// Get methods
-	
+
 	public Object getRewardStructIndex()
 	{
 		return rewardStructIndex;
@@ -95,7 +93,7 @@ public class ExpressionReward extends ExpressionQuant
 	}
 
 	// Other methods
-	
+
 	/**
 	 * Get a string describing the type of R operator, e.g. "R=?" or "R&lt;r".
 	 */
@@ -192,6 +190,7 @@ public class ExpressionReward extends ExpressionQuant
 	 * Get info about the operator and bound.
 	 * @param constantValues Values for constants in order to evaluate any bound
 	 */
+	@Override
 	public OpRelOpBound getRelopBoundInfo(Values constantValues) throws PrismException
 	{
 		if (getBound() != null) {
@@ -201,7 +200,7 @@ public class ExpressionReward extends ExpressionQuant
 			return new OpRelOpBound("R", getRelOp(), null);
 		}
 	}
-	
+
 	/**
 	 * Returns true is this is a minimum rewards operator.
 	 * Actually, this returns true if the operator has "min=?" or a lower bound attached to it,
@@ -212,26 +211,8 @@ public class ExpressionReward extends ExpressionQuant
 	{
 		return getRelOp().isMin() || getRelOp().isLowerBound();
 	}
-	
-	// Methods required for Expression:
-	
-	@Override
-	public boolean isConstant()
-	{
-		return false;
-	}
 
-	@Override
-	public boolean isProposition()
-	{
-		return false;
-	}
-	
-	@Override
-	public Object evaluate(EvaluateContext ec) throws PrismLangException
-	{
-		throw new PrismLangException("Cannot evaluate an R operator without a model");
-	}
+	// Methods required for Expression:
 
 	@Override
 	public String getResultName()
@@ -260,14 +241,8 @@ public class ExpressionReward extends ExpressionQuant
 		}
 	}
 
-	@Override
-	public boolean returnsSingleValue()
-	{
-		return false;
-	}
-
 	// Methods required for ASTElement:
-	
+
 	@Override
 	public Object accept(ASTVisitor v) throws PrismLangException
 	{
@@ -285,6 +260,7 @@ public class ExpressionReward extends ExpressionQuant
 		else expr.setRewardStructIndex(rewardStructIndex);
 		if (rewardStructIndexDiv != null && rewardStructIndexDiv instanceof Expression) expr.setRewardStructIndexDiv(((Expression)rewardStructIndexDiv).deepCopy());
 		else expr.setRewardStructIndexDiv(rewardStructIndexDiv);
+
 		expr.setFilter(getFilter() == null ? null : (Filter)getFilter().deepCopy());
 		expr.setType(type);
 		expr.setPosition(this);
@@ -292,29 +268,21 @@ public class ExpressionReward extends ExpressionQuant
 	}
 
 	// Standard methods
-	
+
 	@Override
-	public String toString()
+	protected String operatorToString()
 	{
-		String s = "";
-		
-		s += "R" + getModifierString();
+		String rewards = "";
 		if (rewardStructIndex != null) {
-			if (rewardStructIndex instanceof Expression) s += "{"+rewardStructIndex+"}";
-			else if (rewardStructIndex instanceof String) s += "{\""+rewardStructIndex+"\"}";
+			if (rewardStructIndex instanceof Expression) rewards += "{"+rewardStructIndex+"}";
+			else if (rewardStructIndex instanceof String) rewards += "{\""+rewardStructIndex+"\"}";
 			if (rewardStructIndexDiv != null) {
-				s += "/";
-				if (rewardStructIndexDiv instanceof Expression) s += "{"+rewardStructIndexDiv+"}";
-				else if (rewardStructIndexDiv instanceof String) s += "{\""+rewardStructIndexDiv+"\"}";
+				rewards += "/";
+				if (rewardStructIndexDiv instanceof Expression) rewards += "{"+rewardStructIndexDiv+"}";
+				else if (rewardStructIndexDiv instanceof String) rewards += "{\""+rewardStructIndexDiv+"\"}";
 			}
 		}
-		s += getRelOp();
-		s += (getBound()==null) ? "?" : getBound().toString();
-		s += " [ " + getExpression();
-		if (getFilter() != null) s += " "+getFilter();
-		s += " ]";
-		
-		return s;
+		return "R" + getModifierString() + rewards;
 	}
 
 	@Override

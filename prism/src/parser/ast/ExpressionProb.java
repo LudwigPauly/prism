@@ -32,7 +32,7 @@ import parser.visitor.ASTVisitor;
 import prism.OpRelOpBound;
 import prism.PrismLangException;
 
-public class ExpressionProb extends ExpressionQuant
+public class ExpressionProb extends ExpressionQuant<Expression>
 {
 	// Constructors
 
@@ -42,9 +42,7 @@ public class ExpressionProb extends ExpressionQuant
 
 	public ExpressionProb(Expression expression, String relOpString, Expression p)
 	{
-		setExpression(expression);
-		setRelOp(relOpString);
-		setBound(p);
+		super(expression, relOpString, p);
 	}
 
 	// Set methods
@@ -90,26 +88,8 @@ public class ExpressionProb extends ExpressionQuant
 			return new OpRelOpBound("P", getRelOp(), null);
 		}
 	}
-	
+
 	// Methods required for Expression:
-
-	@Override
-	public boolean isConstant()
-	{
-		return false;
-	}
-
-	@Override
-	public boolean isProposition()
-	{
-		return false;
-	}
-	
-	@Override
-	public Object evaluate(EvaluateContext ec) throws PrismLangException
-	{
-		throw new PrismLangException("Cannot evaluate a P operator without a model");
-	}
 
 	@Override
 	public String getResultName()
@@ -122,12 +102,6 @@ public class ExpressionProb extends ExpressionQuant
 			return "Maximum probability";
 		else
 			return "Probability";
-	}
-
-	@Override
-	public boolean returnsSingleValue()
-	{
-		return false;
 	}
 
 	// Methods required for ASTElement:
@@ -145,6 +119,7 @@ public class ExpressionProb extends ExpressionQuant
 		expr.setExpression(getExpression() == null ? null : getExpression().deepCopy());
 		expr.setRelOp(getRelOp());
 		expr.setBound(getBound() == null ? null : getBound().deepCopy());
+
 		expr.setFilter(getFilter() == null ? null : (Filter)getFilter().deepCopy());
 		expr.setType(type);
 		expr.setPosition(this);
@@ -154,18 +129,9 @@ public class ExpressionProb extends ExpressionQuant
 	// Standard methods
 
 	@Override
-	public String toString()
+	protected String operatorToString()
 	{
-		String s = "";
-
-		s += "P" + getModifierString() + getRelOp();
-		s += (getBound() == null) ? "?" : getBound().toString();
-		s += " [ " + getExpression();
-		if (getFilter() != null)
-			s += " " + getFilter();
-		s += " ]";
-
-		return s;
+		return "P" + getModifierString();
 	}
 }
 
