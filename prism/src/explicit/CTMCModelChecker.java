@@ -40,7 +40,7 @@ import prism.*;
 /**
  * Explicit-state model checker for continuous-time Markov chains (CTMCs).
  */
-public class CTMCModelChecker extends ProbModelChecker
+public class CTMCModelChecker extends ProbModelChecker implements MCModelChecker<CTMC>
 {
 	/**
 	 * Create a new CTMCModelChecker, inherit basic state from parent (unless null).
@@ -863,6 +863,18 @@ public class CTMCModelChecker extends ProbModelChecker
 	/**
 	 * @see DTMCModelChecker#computeSteadyStateProbsForBSCC(DTMC, BitSet, double[], BSCCPostProcessor)
 	 */
+	public ModelCheckerResult computeSteadyStateProbsForBSCC(DTMC dtmc, BitSet states, double result[]) throws PrismException
+	{
+		if (dtmc.getModelType() == ModelType.CTMC) {
+			return computeSteadyStateProbsForBSCC((CTMC) dtmc, states, result);
+		}
+		return createDTMCModelChecker().computeSteadyStateProbsForBSCC(dtmc, states, result);
+	}
+
+
+	/**
+	 * @see DTMCModelChecker#computeSteadyStateProbsForBSCC(DTMC, BitSet, double[], BSCCPostProcessor)
+	 */
 	public ModelCheckerResult computeSteadyStateProbsForBSCC(CTMC ctmc, BitSet states, double result[]) throws PrismException
 	{
 		// We construct the embedded DTMC and do the steady-state computation there
@@ -998,7 +1010,8 @@ public class CTMCModelChecker extends ProbModelChecker
 	/**
 	 * Create a new DTMC model checker with the same settings as this one. 
 	 */
-	private DTMCModelChecker createDTMCModelChecker() throws PrismException
+	@Override
+	public DTMCModelChecker createDTMCModelChecker() throws PrismException
 	{
 		DTMCModelChecker mcDTMC = new DTMCModelChecker(this);
 		mcDTMC.inheritSettings(this);
@@ -1055,6 +1068,24 @@ public class CTMCModelChecker extends ProbModelChecker
 		mainLog.println("Building embedded DTMC...");
 		DTMC dtmcEmb = ((CTMC)model).getImplicitEmbeddedDTMC();
 		return createDTMCModelChecker().computeExistsRelease(dtmcEmb, A, B);
+	}
+
+	@Override
+	public BitSet prob0(CTMC ctmc, BitSet remain, BitSet target, PredecessorRelation pre) throws PrismException
+	{
+		// Construct embedded DTMC and do computation on that
+		mainLog.println("Building embedded DTMC...");
+		DTMC dtmcEmb = ctmc.getImplicitEmbeddedDTMC();
+		return createDTMCModelChecker().prob0(dtmcEmb, remain, target, pre);
+	}
+
+	@Override
+	public BitSet prob1(CTMC ctmc, BitSet remain, BitSet target, PredecessorRelation pre) throws PrismException
+	{
+		// Construct embedded DTMC and do computation on that
+		mainLog.println("Building embedded DTMC...");
+		DTMC dtmcEmb = ctmc.getImplicitEmbeddedDTMC();
+		return createDTMCModelChecker().prob1(dtmcEmb, remain, target, pre);
 	}
 
 	/**
