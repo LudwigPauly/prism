@@ -62,7 +62,7 @@ import prism.PrismUtils;
 /**
  * Explicit-state model checker for discrete-time Markov chains (DTMCs).
  */
-public class DTMCModelChecker extends ProbModelChecker
+public class DTMCModelChecker extends ProbModelChecker implements MCModelChecker<DTMC<?>>
 {
 	/**
 	 * Create a new DTMCModelChecker, inherit basic state from parent (unless null).
@@ -70,6 +70,12 @@ public class DTMCModelChecker extends ProbModelChecker
 	public DTMCModelChecker(PrismComponent parent) throws PrismException
 	{
 		super(parent);
+	}
+
+	@Override
+	public DTMCModelChecker createDTMCModelChecker()
+	{
+		return this;
 	}
 
 	// Model checking functions
@@ -802,6 +808,8 @@ public class DTMCModelChecker extends ProbModelChecker
 	 * @param target Target states
 	 * @param pre The predecessor relation of the DTMC
 	 */
+
+	@Override
 	public BitSet prob1(DTMC<?> dtmc, BitSet remain, BitSet target, PredecessorRelation pre) {
 		// Implements the constrained reachability algorithm from
 		// Baier, Katoen: Principles of Model Checking (Corollary 10.31 Qualitative Constrained Reachability)
