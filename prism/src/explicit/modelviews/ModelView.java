@@ -105,10 +105,7 @@ public abstract class ModelView<Value> implements Model<Value>
 	@Override
 	public void findDeadlocks(final boolean fix) throws PrismException
 	{
-		for (int s : findDeadlocks(new BitSet())) {
-			deadlockStates.set(s);
-		}
-
+		findDeadlocks(new BitSet()).collect(deadlockStates);
 		if (fix && !fixedDeadlocks) {
 			fixDeadlocks();
 			fixedDeadlocks = true;
@@ -118,7 +115,7 @@ public abstract class ModelView<Value> implements Model<Value>
 	public FunctionalPrimitiveIterable.OfInt findDeadlocks(final BitSet except)
 	{
 		IterableStateSet states = new IterableStateSet(except, getNumStates(), true);
-		return new FilteringIterable.OfInt(states, state -> !getSuccessorsIterator(state).hasNext());
+		return states.filter((int state) -> !getSuccessorsIterator(state).hasNext());
 	}
 
 	@Override
