@@ -519,7 +519,7 @@ public class StateValues implements StateVector, Iterable<Object>
 		type = retType;
 		clearOldStorage();
 	}
-	
+
 	/**
 	 * Modify the vector by applying (pointwise) a binary function
 	 * to this and another vector, only over the states in {@code subset}.
@@ -538,7 +538,7 @@ public class StateValues implements StateVector, Iterable<Object>
 		type = retType;
 		clearOldStorage();
 	}
-	
+
 	/**
 	 * Modify the vector by applying (pointwise) a ternary function
 	 * to this and two other vectors.
@@ -556,7 +556,7 @@ public class StateValues implements StateVector, Iterable<Object>
 		type = retType;
 		clearOldStorage();
 	}
-	
+
 	/**
 	 * Modify the vector by applying (pointwise) a ternary function
 	 * to this and two other vectors, only over the states in {@code subset}.
@@ -576,7 +576,29 @@ public class StateValues implements StateVector, Iterable<Object>
 		type = retType;
 		clearOldStorage();
 	}
-	
+
+
+	/**
+	 * Get the sum of values for states that are in the (BitSet) filter.
+	 */
+	public Object sumOverBitSet(BitSet filter) throws PrismException
+	{
+		if (type instanceof TypeInt) {
+			int sumI = 0;
+			for (int i = filter.nextSetBit(0); i >= 0; i = filter.nextSetBit(i + 1)) {
+				sumI += (int)getValue(i);
+			}
+			return sumI;
+		} else if (type instanceof TypeDouble) {
+			double sumD = 0.0;
+			for (int i = filter.nextSetBit(0); i >= 0; i = filter.nextSetBit(i + 1)) {
+				sumD += (double)getValue(i);
+			}
+			return sumD;
+		}
+		throw new PrismException("Can't take sum over a vector of type " + type);
+	}
+
 	/**
 	 * Set the elements of this vector by reading them in from a file.
 	 * The values in the file should match the existing type of this StateValues.
