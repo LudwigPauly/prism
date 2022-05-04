@@ -36,6 +36,8 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.function.IntFunction;
 
+import common.IterableBitSet;
+import common.iterable.FunctionalPrimitiveIterator;
 import parser.State;
 import parser.ast.ExpressionFilter;
 import parser.type.Type;
@@ -60,58 +62,58 @@ import prism.StateVector;
 public class StateValues implements StateVector, Iterable<Object>
 {
 	// Vector info
-	
+
 	/** Type of value stored */
 	protected Type type;
 	/** Size of vector */
 	protected int size;
 	/** Computed accuracy of stored values (optional) */
 	public Accuracy accuracy = null;
-	
+
 	// Model info
-	
+
 	/** Corresponding list of State objects */
 	protected List<State> statesList;
 
 	// Vector storage (only one used, depending on type)
-	
+
 	/** Specialised storage for boolean values */
 	protected BitSet valuesB;
 	/** General purpose storage for other value types */
 	protected Object[] valuesO;
-	
+
 	// Functional interfaces
-	
+
 	@FunctionalInterface
 	public interface Predicate
 	{
 		public boolean test(Object v) throws PrismException;
 	}
-	
+
 	@FunctionalInterface
 	public interface UnaryFunction
 	{
 		public Object apply(Object v) throws PrismException;
 	}
-	
+
 	@FunctionalInterface
 	public interface BinaryFunction
 	{
 		public Object apply(Object v1, Object v2) throws PrismException;
 	}
-	
+
 	@FunctionalInterface
 	public interface TernaryFunction
 	{
 		public Object apply(Object v1, Object v2, Object v3) throws PrismException;
 	}
-	
+
 	@FunctionalInterface
 	public interface ValueDefinition
 	{
 		public Object apply(int i) throws PrismException;
 	}
-	
+
 	// Constructors
 
 	/**
@@ -136,7 +138,7 @@ public class StateValues implements StateVector, Iterable<Object>
 		initialise(type, model);
 		setFromValueDefinition(values);
 	}
-	
+
 	/**
 	 * Construct a new state values vector with the same value in every state.
 	 * The passed in model determines the vector size (and states list).
@@ -158,7 +160,7 @@ public class StateValues implements StateVector, Iterable<Object>
 	}
 
 	// Utility methods for initialisation/construction
-	
+
 	/**
 	 * Initialise the vector/model info (but not the value storage)
 	 */
@@ -217,7 +219,7 @@ public class StateValues implements StateVector, Iterable<Object>
 			}
 		}
 	}
-	
+
 	/**
 	 * Create (or recreate) the storage for values of the specified type
 	 * Uses existing storage if possible (assumes no change in size)
@@ -234,7 +236,7 @@ public class StateValues implements StateVector, Iterable<Object>
 			}
 		}
 	}
-	
+
 	/**
 	 * Cleared un-needed value storage (if the type has changed)
 	 */
@@ -248,9 +250,9 @@ public class StateValues implements StateVector, Iterable<Object>
 			}
 		}
 	}
-	
+
 	// Static creation methods
-	
+
 	/**
 	 * Create a new state values vector for values of a specified type.
 	 * The values for states are provided as a mapping from integer index to Object.
@@ -263,7 +265,7 @@ public class StateValues implements StateVector, Iterable<Object>
 		sv.setFromValueDefinition(values);
 		return sv;
 	}
-	
+
 	/**
 	 * Create a new state values vector for values of a specified type,
 	 * where the value is the same for every state.
@@ -321,7 +323,7 @@ public class StateValues implements StateVector, Iterable<Object>
 		sv.setAccuracy(res.accuracy);
 		return sv;
 	}
-	
+
 	/**
 	 * Create a new (Boolean-valued) state values vector from an existing BitSet.
 	 * The BitSet is stored directly, not copied.
@@ -348,7 +350,7 @@ public class StateValues implements StateVector, Iterable<Object>
 		sv.setAccuracy(AccuracyFactory.doublesFromQualitative());
 		return sv;
 	}
-	
+
 	/**
 	 * Create a new state values vector, reading in the values from a file.
 	 */
@@ -359,9 +361,9 @@ public class StateValues implements StateVector, Iterable<Object>
 		sv.readFromFile(file);
 		return sv;
 	}
-	
+
 	// Other methods to create new vectors
-	
+
 	/**
 	 * Create a new StateValues, copied from this one, but mapped to a new model.
 	 * @param newModel The new model
@@ -404,9 +406,9 @@ public class StateValues implements StateVector, Iterable<Object>
 		sv.setAccuracy(getAccuracy());
 		return sv;
 	}
-	
+
 	// Other set methods
-	
+
 	/**
 	 * Set the accuracy.
 	 */
@@ -414,9 +416,9 @@ public class StateValues implements StateVector, Iterable<Object>
 	{
 		this.accuracy = accuracy;
 	}
-	
+
 	// Methods to modify vector values
-	
+
 	@Override
 	public void clear()
 	{
@@ -424,7 +426,7 @@ public class StateValues implements StateVector, Iterable<Object>
 		valuesB = null;
 		valuesO = null;
 	}
-	
+
 	/**
 	 * Set the value for state index {@code i} to {@code value}.
 	 * The type of Object passed in for {@code value} should be the
@@ -468,7 +470,7 @@ public class StateValues implements StateVector, Iterable<Object>
 		type = TypeBool.getInstance();
 		clearOldStorage();
 	}
-	
+
 	/**
 	 * Modify the vector by applying (pointwise) a unary function.
 	 * @param retType Function return type
@@ -500,7 +502,30 @@ public class StateValues implements StateVector, Iterable<Object>
 		type = retType;
 		clearOldStorage();
 	}
-	
+
+	/**
+	 * Modify the vector at in the filter defined entries by applying (pointwise) a
+	 * binary function to this and another vector.
+	 * @param retType Function return type
+	 * @param func Function definition
+	 * @param sv2 Vector 2
+	 * @param filter BitSet for masking
+	 * @throws PrismException
+	 */
+
+	public void applyFunction(Type retType, BinaryFunction func, StateValues sv2, BitSet filter) throws PrismException
+	{
+		FunctionalPrimitiveIterator.OfInt states = IterableBitSet.getSetBits(filter).iterator();
+		initStorage(retType);
+
+		while (states.hasNext()) {
+			int i = states.nextInt();
+			setValue(i, func.apply(getValue(i), sv2.getValue(i)), retType);
+		}
+		type = retType;
+		clearOldStorage();
+	}
+
 	/**
 	 * Modify the vector by applying (pointwise) a ternary function
 	 * to this and two other vectors.
@@ -518,7 +543,28 @@ public class StateValues implements StateVector, Iterable<Object>
 		type = retType;
 		clearOldStorage();
 	}
-	
+
+	/**
+	 * Get the sum of values for states that are in the (BitSet) filter.
+	 */
+	public Object sumOverBitSet(BitSet filter) throws PrismException
+	{
+		if (type instanceof TypeInt) {
+			int sumI = 0;
+			for (int i = filter.nextSetBit(0); i >= 0; i = filter.nextSetBit(i + 1)) {
+				sumI += (int)getValue(i);
+			}
+			return sumI;
+		} else if (type instanceof TypeDouble) {
+			double sumD = 0.0;
+			for (int i = filter.nextSetBit(0); i >= 0; i = filter.nextSetBit(i + 1)) {
+				sumD += (double)getValue(i);
+			}
+			return sumD;
+		}
+		throw new PrismException("Can't take sum over a vector of type " + type);
+	}
+
 	/**
 	 * Set the elements of this vector by reading them in from a file.
 	 * The values in the file should match the existing type of this StateValues.
@@ -569,7 +615,7 @@ public class StateValues implements StateVector, Iterable<Object>
 	}
 
 	// Methods to modify vector values storing Boolean values
-	
+
 	/**
 	 * Modify the vector by applying 'implies' with operand {@code sv}.
 	 */
@@ -627,7 +673,7 @@ public class StateValues implements StateVector, Iterable<Object>
 
 		valuesB.flip(0, size);
 	}
-	
+
 	/**
 	 * Modify the vector by applying 'not'
 	 */
@@ -640,7 +686,7 @@ public class StateValues implements StateVector, Iterable<Object>
 	}
 
 	// Accessors
-	
+
 	/**
 	 * Get the type of the values stored
 	 */
@@ -648,7 +694,7 @@ public class StateValues implements StateVector, Iterable<Object>
 	{
 		return type;
 	}
-	
+
 	@Override
 	public int getSize()
 	{
@@ -687,13 +733,13 @@ public class StateValues implements StateVector, Iterable<Object>
 		return new Iterator<Object>()
 		{
 			int i = 0;
-			
+
 			@Override
 			public Object next()
 			{
 				return getValue(i++);
 			}
-			
+
 			@Override
 			public boolean hasNext()
 			{
@@ -701,7 +747,7 @@ public class StateValues implements StateVector, Iterable<Object>
 			}
 		};
 	}
-	
+
 	/**
 	 * Return a filtered view of this vector, only including
 	 * the values for states whose index is set in {@code filter}.
@@ -716,7 +762,7 @@ public class StateValues implements StateVector, Iterable<Object>
 				return new Iterator<Object>()
 				{
 					int i = filter.nextSetBit(0);
-					
+
 					@Override
 					public Object next()
 					{
@@ -724,7 +770,7 @@ public class StateValues implements StateVector, Iterable<Object>
 						i = filter.nextSetBit(i + 1);
 						return o;
 					}
-					
+
 					@Override
 					public boolean hasNext()
 					{
@@ -734,7 +780,7 @@ public class StateValues implements StateVector, Iterable<Object>
 			}
 		};
 	}
-	
+
 	/**
 	 * For Boolean-valued vectors, get the BitSet storing the data.
 	 */
@@ -766,7 +812,7 @@ public class StateValues implements StateVector, Iterable<Object>
 		}
 		return bs;
 	}
-	
+
 	/**
 	 * Get a BitSet for the states whose value is (approximately) equal to {@code value}.
 	 * For double values, equality is only checked approximately, either using the stored
@@ -953,7 +999,7 @@ public class StateValues implements StateVector, Iterable<Object>
 	}
 
 	// Standard methods
-	
+
 	/**
 	 * Make a (deep) copy of this vector
 	 */
