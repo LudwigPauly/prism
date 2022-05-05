@@ -124,6 +124,9 @@ public class PrismSettings implements Observer
 	public static final String PRISM_NO_DA_SIMPLIFY				= "prism.noDaSimplify";
 	public static final String PRISM_EXPORT_ADV					= "prism.exportAdv";
 	public static final String PRISM_EXPORT_ADV_FILENAME			= "prism.exportAdvFilename";
+
+	// STEADY-STATE AND LONG-RUN
+	public static final String PRISM_CACHE_STEADY_STATES			= "prism.cacheSteadyStates";
 	
 	public static final	String PRISM_MULTI_MAX_POINTS				= "prism.multiMaxIters";
 	public static final	String PRISM_PARETO_EPSILON					= "prism.paretoEpsilon";
@@ -392,6 +395,11 @@ public class PrismSettings implements Observer
 																			"For fast adaptive uniformisation (FAU), the time period is split into this number of of intervals." },
 			{ DOUBLE_TYPE,      PRISM_FAU_INITIVAL,						"FAU initial time interval",			"4.1",   	 	Double.valueOf(1.0),     														"",	
 																			"For fast adaptive uniformisation (FAU), the length of initial time interval to analyse." },
+		},
+		{
+			// STEADY-STATE AND LONG-RUN OPTIONS:
+			{ BOOLEAN_TYPE,		PRISM_CACHE_STEADY_STATES,				"Cache steady-state probabilities",					"4.0.3",		true,														"",
+																			"Compute steady-state probabilities at most once, and store them for further queries." }
 		},
 		{
 			{ INTEGER_TYPE,		SIMULATOR_DEFAULT_NUM_SAMPLES,			"Default number of samples",			"4.0",		Integer.valueOf(1000),			"1,",
@@ -1373,6 +1381,14 @@ public class PrismSettings implements Observer
 		// Extra reach info on
 		else if (sw.equals("extrareachinfo")) {
 			set(PRISM_EXTRA_REACH_INFO, true);
+		}
+
+		// Cache steady-states on/off
+		else if (sw.equals("cachesteadystates")) {
+			set(PRISM_CACHE_STEADY_STATES, true);
+		}
+		else if (sw.equals("nocachesteadystates")) {
+			set(PRISM_CACHE_STEADY_STATES, false);
 		}
 		
 		// SPARSE/HYBRID/MTBDD OPTIONS:

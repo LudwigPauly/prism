@@ -380,7 +380,7 @@ public class ProbModelChecker extends NonProbModelChecker
 	{
 		// 1. compute steady-state probabilities or fetch from cache
 		SteadyStateProbs.SteadyStateProbsSymbolic steadyStateProbsBscc;
-		/*
+
 		if (SteadyStateCache.getInstance().isEnabled()) {
 			SteadyStateCache cache = SteadyStateCache.getInstance();
 			if (cache.containsSteadyStateProbs(model)) {
@@ -392,9 +392,9 @@ public class ProbModelChecker extends NonProbModelChecker
 				mainLog.println("\nCaching steady-state probabilities.");
 				cache.storeSteadyStateProbs(model, steadyStateProbsBscc.deepCopy(), settings);
 			}
-		} else {*/
+		} else {
 			steadyStateProbsBscc = SteadyStateProbs.computeSymbolic(this);
-		//}
+		}
 		JDDNode nonBsccStates = steadyStateProbsBscc.getNonBsccStates();
 		StateValues steadyStateProbs =steadyStateProbsBscc.getSteadyStateProbabilities();
 

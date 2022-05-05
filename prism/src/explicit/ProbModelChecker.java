@@ -1252,7 +1252,7 @@ public class ProbModelChecker extends NonProbModelChecker
 
 		// 1. compute steady-state probabilities or fetch from cache
 		SteadyStateProbsExplicit steadyStateProbsBscc;
-		/*
+
 		if (SteadyStateCache.getInstance().isEnabled()) {
 			SteadyStateCache cache = SteadyStateCache.getInstance();
 			if (cache.containsSteadyStateProbs(dtmc)) {
@@ -1264,9 +1264,9 @@ public class ProbModelChecker extends NonProbModelChecker
 				mainLog.println("\nCaching steady-state probabilities.");
 				cache.storeSteadyStateProbs(dtmc, steadyStateProbsBscc, settings);
 			}
-		} else {*/
+		} else {
 			steadyStateProbsBscc = SteadyStateProbs.computeSimple((MCModelChecker<?>) this, dtmc);
-		//}
+		}
 		BitSet nonBsccStates = steadyStateProbsBscc.getNonBsccStates();
 		StateValues steadyStateProbs = StateValues.createFromDoubleArray(steadyStateProbsBscc.getSteadyStateProbabilities(), dtmc);
 
