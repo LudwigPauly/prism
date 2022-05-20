@@ -1,4 +1,4 @@
-// randomized protocol for signing contracts Even, Goldreich and Lempel
+// randomized protocol for signing contracts Even, Joldreich and Lempel
 
 dtmc
 
@@ -23,13 +23,13 @@ dtmc
 // currently, this model only works for N up to 20
 
 const int N; // number of pairs of secrets the party sends
-const int L; // number of bits in each secret
+const int J; // number of bits in each secret
 
 const double err;
 
 module counter
 	
-	b : [1..L]; // counter for current bit to be send (used in phases 2 and 3)
+	b : [1..J]; // counter for current bit to be send (used in phases 2 and 3)
 	n : [0..max(N-1,1)]; // counter as parties send N messages in a row
 	phase : [1..5]; // phase of the protocol
 	party : [1..2]; // which party moves
@@ -48,9 +48,9 @@ module counter
 	[receiveA] ((phase)>=(2)&(phase)<=(3))& party=2 & n=N-1 -> (party'=1) & (n'=1); // finished for party A now move to party B
 	// when A sends
 	[receiveB] ((phase)>=(2)&(phase)<=(3))& party=1 & n<N-1 & n>0 -> (n'=n+1); // B transmits bth bit of secrets 1..N or N=1..2N
-	[receiveB] ((phase)>=(2)&(phase)<=(3))& party=1 & n=N-1 & b<L -> (party'=1) & (n'=0) & (b'=b+1); // finished for party B move to next bit
-	[receiveB] phase=2 & party=1 & n=N-1 & b=L -> (phase'=3) & (party'=1) & (n'=0) & (b'=1); // finished for party B move to next phase
-	[receiveB] phase=3 & party=1 & n=N-1 & b=L -> (phase'=4); // finished protocol (reveal values)
+	[receiveB] ((phase)>=(2)&(phase)<=(3))& party=1 & n=N-1 & b<J -> (party'=1) & (n'=0) & (b'=b+1); // finished for party B move to next bit
+	[receiveB] phase=2 & party=1 & n=N-1 & b=J -> (phase'=3) & (party'=1) & (n'=0) & (b'=1); // finished for party B move to next phase
+	[receiveB] phase=3 & party=1 & n=N-1 & b=J -> (phase'=4); // finished protocol (reveal values)
 	
 	// FINISHED
 	[] phase=4 -> (phase'=4); // loop
@@ -62,91 +62,91 @@ module partyA
 	
 	// bi the number of bits of B's ith secret A knows 
 	// (keep pairs of secrets together to give a more structured model)
-	b0  : [0..L]; b20 : [0..L];
-	b1  : [0..L]; b21 : [0..L];
-	b2  : [0..L]; b22 : [0..L];
-	b3  : [0..L]; b23 : [0..L];
-	b4  : [0..L]; b24 : [0..L];
-	b5  : [0..L]; b25 : [0..L];
-	b6  : [0..L]; b26 : [0..L];
-	b7  : [0..L]; b27 : [0..L];
-	b8  : [0..L]; b28 : [0..L];
-	b9  : [0..L]; b29 : [0..L];
-	b10 : [0..L]; b30 : [0..L];
-	b11 : [0..L]; b31 : [0..L];
-	b12 : [0..L]; b32 : [0..L];
-	b13 : [0..L]; b33 : [0..L];
-	b14 : [0..L]; b34 : [0..L];
-	b15 : [0..L]; b35 : [0..L];
-	b16 : [0..L]; b36 : [0..L];
-	b17 : [0..L]; b37 : [0..L];
-	b18 : [0..L]; b38 : [0..L];
-	b19 : [0..L]; b39 : [0..L];
+	b0  : [0..J]; b20 : [0..J];
+	b1  : [0..J]; b21 : [0..J];
+	b2  : [0..J]; b22 : [0..J];
+	b3  : [0..J]; b23 : [0..J];
+	b4  : [0..J]; b24 : [0..J];
+	b5  : [0..J]; b25 : [0..J];
+	b6  : [0..J]; b26 : [0..J];
+	b7  : [0..J]; b27 : [0..J];
+	b8  : [0..J]; b28 : [0..J];
+	b9  : [0..J]; b29 : [0..J];
+	b10 : [0..J]; b30 : [0..J];
+	b11 : [0..J]; b31 : [0..J];
+	b12 : [0..J]; b32 : [0..J];
+	b13 : [0..J]; b33 : [0..J];
+	b14 : [0..J]; b34 : [0..J];
+	b15 : [0..J]; b35 : [0..J];
+	b16 : [0..J]; b36 : [0..J];
+	b17 : [0..J]; b37 : [0..J];
+	b18 : [0..J]; b38 : [0..J];
+	b19 : [0..J]; b39 : [0..J];
 	
 	
 	// first step (get either secret i or (N-1)+i with equal probability)
-	[receiveA] phase=1 & n=0  -> [0.5*(1-err),0.5*(1+err)] : (b0'=L)  + [0.5*(1-err),0.5*(1+err)] : (b20'=L);
-	[receiveA] phase=1 & n=1  -> [0.5*(1-err),0.5*(1+err)] : (b1'=L)  + [0.5*(1-err),0.5*(1+err)] : (b21'=L);
-	[receiveA] phase=1 & n=2  -> [0.5*(1-err),0.5*(1+err)] : (b2'=L)  + [0.5*(1-err),0.5*(1+err)] : (b22'=L);
-	[receiveA] phase=1 & n=3  -> [0.5*(1-err),0.5*(1+err)] : (b3'=L)  + [0.5*(1-err),0.5*(1+err)] : (b23'=L);
-	[receiveA] phase=1 & n=4  -> [0.5*(1-err),0.5*(1+err)] : (b4'=L)  + [0.5*(1-err),0.5*(1+err)] : (b24'=L);
-	[receiveA] phase=1 & n=5  -> [0.5*(1-err),0.5*(1+err)] : (b5'=L)  + [0.5*(1-err),0.5*(1+err)] : (b25'=L);
-	[receiveA] phase=1 & n=6  -> [0.5*(1-err),0.5*(1+err)] : (b6'=L)  + [0.5*(1-err),0.5*(1+err)] : (b26'=L);
-	[receiveA] phase=1 & n=7  -> [0.5*(1-err),0.5*(1+err)] : (b7'=L)  + [0.5*(1-err),0.5*(1+err)] : (b27'=L);
-	[receiveA] phase=1 & n=8  -> [0.5*(1-err),0.5*(1+err)] : (b8'=L)  + [0.5*(1-err),0.5*(1+err)] : (b28'=L);
-	[receiveA] phase=1 & n=9  -> [0.5*(1-err),0.5*(1+err)] : (b9'=L)  + [0.5*(1-err),0.5*(1+err)] : (b29'=L);
-	[receiveA] phase=1 & n=10 -> [0.5*(1-err),0.5*(1+err)] : (b10'=L) + [0.5*(1-err),0.5*(1+err)] : (b30'=L);
-	[receiveA] phase=1 & n=11 -> [0.5*(1-err),0.5*(1+err)] : (b11'=L) + [0.5*(1-err),0.5*(1+err)] : (b31'=L);
-	[receiveA] phase=1 & n=12 -> [0.5*(1-err),0.5*(1+err)] : (b12'=L) + [0.5*(1-err),0.5*(1+err)] : (b32'=L);
-	[receiveA] phase=1 & n=13 -> [0.5*(1-err),0.5*(1+err)] : (b13'=L) + [0.5*(1-err),0.5*(1+err)] : (b33'=L);
-	[receiveA] phase=1 & n=14 -> [0.5*(1-err),0.5*(1+err)] : (b14'=L) + [0.5*(1-err),0.5*(1+err)] : (b34'=L);
-	[receiveA] phase=1 & n=15 -> [0.5*(1-err),0.5*(1+err)] : (b15'=L) + [0.5*(1-err),0.5*(1+err)] : (b35'=L);
-	[receiveA] phase=1 & n=16 -> [0.5*(1-err),0.5*(1+err)] : (b16'=L) + [0.5*(1-err),0.5*(1+err)] : (b36'=L);
-	[receiveA] phase=1 & n=17 -> [0.5*(1-err),0.5*(1+err)] : (b17'=L) + [0.5*(1-err),0.5*(1+err)] : (b37'=L);
-	[receiveA] phase=1 & n=18 -> [0.5*(1-err),0.5*(1+err)] : (b18'=L) + [0.5*(1-err),0.5*(1+err)] : (b38'=L);
-	[receiveA] phase=1 & n=19 -> [0.5*(1-err),0.5*(1+err)] : (b19'=L) + [0.5*(1-err),0.5*(1+err)] : (b39'=L);
+	[receiveA] phase=1 & n=0  -> [0.5*(1-err),0.5*(1+err)] : (b0'=J)  + [0.5*(1-err),0.5*(1+err)] : (b20'=J);
+	[receiveA] phase=1 & n=1  -> [0.5*(1-err),0.5*(1+err)] : (b1'=J)  + [0.5*(1-err),0.5*(1+err)] : (b21'=J);
+	[receiveA] phase=1 & n=2  -> [0.5*(1-err),0.5*(1+err)] : (b2'=J)  + [0.5*(1-err),0.5*(1+err)] : (b22'=J);
+	[receiveA] phase=1 & n=3  -> [0.5*(1-err),0.5*(1+err)] : (b3'=J)  + [0.5*(1-err),0.5*(1+err)] : (b23'=J);
+	[receiveA] phase=1 & n=4  -> [0.5*(1-err),0.5*(1+err)] : (b4'=J)  + [0.5*(1-err),0.5*(1+err)] : (b24'=J);
+	[receiveA] phase=1 & n=5  -> [0.5*(1-err),0.5*(1+err)] : (b5'=J)  + [0.5*(1-err),0.5*(1+err)] : (b25'=J);
+	[receiveA] phase=1 & n=6  -> [0.5*(1-err),0.5*(1+err)] : (b6'=J)  + [0.5*(1-err),0.5*(1+err)] : (b26'=J);
+	[receiveA] phase=1 & n=7  -> [0.5*(1-err),0.5*(1+err)] : (b7'=J)  + [0.5*(1-err),0.5*(1+err)] : (b27'=J);
+	[receiveA] phase=1 & n=8  -> [0.5*(1-err),0.5*(1+err)] : (b8'=J)  + [0.5*(1-err),0.5*(1+err)] : (b28'=J);
+	[receiveA] phase=1 & n=9  -> [0.5*(1-err),0.5*(1+err)] : (b9'=J)  + [0.5*(1-err),0.5*(1+err)] : (b29'=J);
+	[receiveA] phase=1 & n=10 -> [0.5*(1-err),0.5*(1+err)] : (b10'=J) + [0.5*(1-err),0.5*(1+err)] : (b30'=J);
+	[receiveA] phase=1 & n=11 -> [0.5*(1-err),0.5*(1+err)] : (b11'=J) + [0.5*(1-err),0.5*(1+err)] : (b31'=J);
+	[receiveA] phase=1 & n=12 -> [0.5*(1-err),0.5*(1+err)] : (b12'=J) + [0.5*(1-err),0.5*(1+err)] : (b32'=J);
+	[receiveA] phase=1 & n=13 -> [0.5*(1-err),0.5*(1+err)] : (b13'=J) + [0.5*(1-err),0.5*(1+err)] : (b33'=J);
+	[receiveA] phase=1 & n=14 -> [0.5*(1-err),0.5*(1+err)] : (b14'=J) + [0.5*(1-err),0.5*(1+err)] : (b34'=J);
+	[receiveA] phase=1 & n=15 -> [0.5*(1-err),0.5*(1+err)] : (b15'=J) + [0.5*(1-err),0.5*(1+err)] : (b35'=J);
+	[receiveA] phase=1 & n=16 -> [0.5*(1-err),0.5*(1+err)] : (b16'=J) + [0.5*(1-err),0.5*(1+err)] : (b36'=J);
+	[receiveA] phase=1 & n=17 -> [0.5*(1-err),0.5*(1+err)] : (b17'=J) + [0.5*(1-err),0.5*(1+err)] : (b37'=J);
+	[receiveA] phase=1 & n=18 -> [0.5*(1-err),0.5*(1+err)] : (b18'=J) + [0.5*(1-err),0.5*(1+err)] : (b38'=J);
+	[receiveA] phase=1 & n=19 -> [0.5*(1-err),0.5*(1+err)] : (b19'=J) + [0.5*(1-err),0.5*(1+err)] : (b39'=J);
 	// second step (secrets 0,...,N-1)
-	[receiveA] phase=2 & n=0  -> (b0'=min(b0+1,L));
-	[receiveA] phase=2 & n=1  -> (b1'=min(b1+1,L));
-	[receiveA] phase=2 & n=2  -> (b2'=min(b2+1,L));
-	[receiveA] phase=2 & n=3  -> (b3'=min(b3+1,L));
-	[receiveA] phase=2 & n=4  -> (b4'=min(b4+1,L));
-	[receiveA] phase=2 & n=5  -> (b5'=min(b5+1,L));
-	[receiveA] phase=2 & n=6  -> (b6'=min(b6+1,L));
-	[receiveA] phase=2 & n=7  -> (b7'=min(b7+1,L));
-	[receiveA] phase=2 & n=8  -> (b8'=min(b8+1,L));
-	[receiveA] phase=2 & n=9  -> (b9'=min(b9+1,L));
-	[receiveA] phase=2 & n=10 -> (b10'=min(b10+1,L));
-	[receiveA] phase=2 & n=11 -> (b11'=min(b11+1,L));
-	[receiveA] phase=2 & n=12 -> (b12'=min(b12+1,L));
-	[receiveA] phase=2 & n=13 -> (b13'=min(b13+1,L));
-	[receiveA] phase=2 & n=14 -> (b14'=min(b14+1,L));
-	[receiveA] phase=2 & n=15 -> (b15'=min(b15+1,L));
-	[receiveA] phase=2 & n=16 -> (b16'=min(b16+1,L));
-	[receiveA] phase=2 & n=17 -> (b17'=min(b17+1,L));
-	[receiveA] phase=2 & n=18 -> (b18'=min(b18+1,L));
-	[receiveA] phase=2 & n=19 -> (b19'=min(b19+1,L));
+	[receiveA] phase=2 & n=0  -> (b0'=min(b0+1,J));
+	[receiveA] phase=2 & n=1  -> (b1'=min(b1+1,J));
+	[receiveA] phase=2 & n=2  -> (b2'=min(b2+1,J));
+	[receiveA] phase=2 & n=3  -> (b3'=min(b3+1,J));
+	[receiveA] phase=2 & n=4  -> (b4'=min(b4+1,J));
+	[receiveA] phase=2 & n=5  -> (b5'=min(b5+1,J));
+	[receiveA] phase=2 & n=6  -> (b6'=min(b6+1,J));
+	[receiveA] phase=2 & n=7  -> (b7'=min(b7+1,J));
+	[receiveA] phase=2 & n=8  -> (b8'=min(b8+1,J));
+	[receiveA] phase=2 & n=9  -> (b9'=min(b9+1,J));
+	[receiveA] phase=2 & n=10 -> (b10'=min(b10+1,J));
+	[receiveA] phase=2 & n=11 -> (b11'=min(b11+1,J));
+	[receiveA] phase=2 & n=12 -> (b12'=min(b12+1,J));
+	[receiveA] phase=2 & n=13 -> (b13'=min(b13+1,J));
+	[receiveA] phase=2 & n=14 -> (b14'=min(b14+1,J));
+	[receiveA] phase=2 & n=15 -> (b15'=min(b15+1,J));
+	[receiveA] phase=2 & n=16 -> (b16'=min(b16+1,J));
+	[receiveA] phase=2 & n=17 -> (b17'=min(b17+1,J));
+	[receiveA] phase=2 & n=18 -> (b18'=min(b18+1,J));
+	[receiveA] phase=2 & n=19 -> (b19'=min(b19+1,J));
 	// second step (secrets N,...,2N-1)
-	[receiveA] phase=3 & n=0  -> (b20'=min(b20+1,L));
-	[receiveA] phase=3 & n=1  -> (b21'=min(b21+1,L));
-	[receiveA] phase=3 & n=2  -> (b22'=min(b22+1,L));
-	[receiveA] phase=3 & n=3  -> (b23'=min(b23+1,L));
-	[receiveA] phase=3 & n=4  -> (b24'=min(b24+1,L));
-	[receiveA] phase=3 & n=5  -> (b25'=min(b25+1,L));
-	[receiveA] phase=3 & n=6  -> (b26'=min(b26+1,L));
-	[receiveA] phase=3 & n=7  -> (b27'=min(b27+1,L));
-	[receiveA] phase=3 & n=8  -> (b28'=min(b28+1,L));
-	[receiveA] phase=3 & n=9  -> (b29'=min(b29+1,L));
-	[receiveA] phase=3 & n=10 -> (b30'=min(b30+1,L));
-	[receiveA] phase=3 & n=11 -> (b31'=min(b31+1,L));
-	[receiveA] phase=3 & n=12 -> (b32'=min(b32+1,L));
-	[receiveA] phase=3 & n=13 -> (b33'=min(b33+1,L));
-	[receiveA] phase=3 & n=14 -> (b34'=min(b34+1,L));
-	[receiveA] phase=3 & n=15 -> (b35'=min(b35+1,L));
-	[receiveA] phase=3 & n=16 -> (b36'=min(b36+1,L));
-	[receiveA] phase=3 & n=17 -> (b37'=min(b37+1,L));
-	[receiveA] phase=3 & n=18 -> (b38'=min(b38+1,L));
-	[receiveA] phase=3 & n=19 -> (b39'=min(b39+1,L));
+	[receiveA] phase=3 & n=0  -> (b20'=min(b20+1,J));
+	[receiveA] phase=3 & n=1  -> (b21'=min(b21+1,J));
+	[receiveA] phase=3 & n=2  -> (b22'=min(b22+1,J));
+	[receiveA] phase=3 & n=3  -> (b23'=min(b23+1,J));
+	[receiveA] phase=3 & n=4  -> (b24'=min(b24+1,J));
+	[receiveA] phase=3 & n=5  -> (b25'=min(b25+1,J));
+	[receiveA] phase=3 & n=6  -> (b26'=min(b26+1,J));
+	[receiveA] phase=3 & n=7  -> (b27'=min(b27+1,J));
+	[receiveA] phase=3 & n=8  -> (b28'=min(b28+1,J));
+	[receiveA] phase=3 & n=9  -> (b29'=min(b29+1,J));
+	[receiveA] phase=3 & n=10 -> (b30'=min(b30+1,J));
+	[receiveA] phase=3 & n=11 -> (b31'=min(b31+1,J));
+	[receiveA] phase=3 & n=12 -> (b32'=min(b32+1,J));
+	[receiveA] phase=3 & n=13 -> (b33'=min(b33+1,J));
+	[receiveA] phase=3 & n=14 -> (b34'=min(b34+1,J));
+	[receiveA] phase=3 & n=15 -> (b35'=min(b35+1,J));
+	[receiveA] phase=3 & n=16 -> (b36'=min(b36+1,J));
+	[receiveA] phase=3 & n=17 -> (b37'=min(b37+1,J));
+	[receiveA] phase=3 & n=18 -> (b38'=min(b38+1,J));
+	[receiveA] phase=3 & n=19 -> (b39'=min(b39+1,J));
 
 endmodule
 
@@ -159,47 +159,47 @@ module partyB=partyA[b0 =a0 ,b1 =a1 ,b2 =a2 ,b3 =a3 ,b4 =a4 ,b5 =a5 ,b6 =a6 ,b7 
 endmodule
 
 // formulae
-formula kB = ( (a0=L  & a20=L)
-			 | (a1=L  & a21=L)
-			 | (a2=L  & a22=L)
-			 | (a3=L  & a23=L)
-			 | (a4=L  & a24=L)
-			 | (a5=L  & a25=L)
-			 | (a6=L  & a26=L)
-			 | (a7=L  & a27=L)
-			 | (a8=L  & a28=L)
-			 | (a9=L  & a29=L)
-			 | (a10=L & a30=L)
-			 | (a11=L & a31=L)
-			 | (a12=L & a32=L)
-			 | (a13=L & a33=L)
-			 | (a14=L & a34=L)
-			 | (a15=L & a35=L)
-			 | (a16=L & a36=L)
-			 | (a17=L & a37=L)
-			 | (a18=L & a38=L)
-			 | (a19=L & a39=L));
+formula kB = ( (a0=J  & a20=J)
+			 | (a1=J  & a21=J)
+			 | (a2=J  & a22=J)
+			 | (a3=J  & a23=J)
+			 | (a4=J  & a24=J)
+			 | (a5=J  & a25=J)
+			 | (a6=J  & a26=J)
+			 | (a7=J  & a27=J)
+			 | (a8=J  & a28=J)
+			 | (a9=J  & a29=J)
+			 | (a10=J & a30=J)
+			 | (a11=J & a31=J)
+			 | (a12=J & a32=J)
+			 | (a13=J & a33=J)
+			 | (a14=J & a34=J)
+			 | (a15=J & a35=J)
+			 | (a16=J & a36=J)
+			 | (a17=J & a37=J)
+			 | (a18=J & a38=J)
+			 | (a19=J & a39=J));
 
-formula kA = ( (b0=L  & b20=L)
-			 | (b1=L  & b21=L)
-			 | (b2=L  & b22=L)
-			 | (b3=L  & b23=L)
-			 | (b4=L  & b24=L)
-			 | (b5=L  & b25=L)
-			 | (b6=L  & b26=L)
-			 | (b7=L  & b27=L)
-			 | (b8=L  & b28=L)
-			 | (b9=L  & b29=L)
-			 | (b10=L & b30=L)
-			 | (b11=L & b31=L)
-			 | (b12=L & b32=L)
-			 | (b13=L & b33=L)
-			 | (b14=L & b34=L)
-			 | (b15=L & b35=L)
-			 | (b16=L & b36=L)
-			 | (b17=L & b37=L)
-			 | (b18=L & b38=L)
-			 | (b19=L & b39=L));
+formula kA = ( (b0=J  & b20=J)
+			 | (b1=J  & b21=J)
+			 | (b2=J  & b22=J)
+			 | (b3=J  & b23=J)
+			 | (b4=J  & b24=J)
+			 | (b5=J  & b25=J)
+			 | (b6=J  & b26=J)
+			 | (b7=J  & b27=J)
+			 | (b8=J  & b28=J)
+			 | (b9=J  & b29=J)
+			 | (b10=J & b30=J)
+			 | (b11=J & b31=J)
+			 | (b12=J & b32=J)
+			 | (b13=J & b33=J)
+			 | (b14=J & b34=J)
+			 | (b15=J & b35=J)
+			 | (b16=J & b36=J)
+			 | (b17=J & b37=J)
+			 | (b18=J & b38=J)
+			 | (b19=J & b39=J));
 
 // labels
 label "knowB" = kB;
