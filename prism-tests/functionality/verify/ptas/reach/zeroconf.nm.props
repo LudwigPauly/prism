@@ -1,5 +1,5 @@
 const int K=2;
-const int L;
+const int J;
 
 // Maximum probability of configuring IP address incorrectly
 // RESULT: 130321/100130321
@@ -11,7 +11,7 @@ Pmax=? [ F s=2 & ip=K ];
 
 // As above but testing using (undefined) constants
 // RESULT: 130321/100130321
-Pmax=? [ F s=2 & ip=L ];
+Pmax=? [ F s=2 & ip=J ];
 
 const int T = 150;
 
