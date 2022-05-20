@@ -1,5 +1,5 @@
 const int K = 2;
-const int L;
+const int J;
 
 label "x3" = x=3;
 
@@ -38,4 +38,4 @@ Pmax=? [ F x>=K ];
 
 // This tests (undefined) constants from the prop file
 // RESULT: 1.0
-Pmax=? [ F x>=L ];
+Pmax=? [ F x>=J ];

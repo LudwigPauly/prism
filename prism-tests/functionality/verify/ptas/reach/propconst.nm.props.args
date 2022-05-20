@@ -1,2 +1,2 @@
--ptamethod digital -const L=2
--ptamethod digital -const L=2 -ex
+-ptamethod digital -const J=2
+-ptamethod digital -const J=2 -ex
