@@ -48,6 +48,9 @@ import explicit.rewards.MCRewards;
 import explicit.rewards.MDPRewards;
 import explicit.rewards.Rewards;
 import parser.ast.Expression;
+import parser.ast.ExpressionLabel;
+import parser.ast.ExpressionProb;
+import parser.ast.RelOp;
 import prism.AccuracyFactory;
 import prism.ModelType;
 import prism.OptionsIntervalIteration;
@@ -1960,6 +1963,56 @@ public class DTMCModelChecker extends ProbModelChecker implements MCModelChecker
 			return iterationMethod.doTopologicalValueIteration(this, description, sccs, forMvMultRew, singletonSCCSolver, timer, iterationsExport);
 		} else {
 			return iterationMethod.doValueIteration(this, description, forMvMultRew, unknownStates, timer, iterationsExport);
+		}
+	}
+
+	// L operator
+
+	protected static class ReachBsccComputer<T extends MCModelChecker<?>>
+	{
+		T mc;
+		DTMC model;
+		String bsccName                     = null;
+		String nonBsccName                  = null;
+		ExpressionProb untilBscc            = null;
+		//ExpressionConditional condReachBscc = null;
+
+		public ReachBsccComputer(T mc, DTMC model, Expression condition)
+		{
+			this.mc = mc;
+			this.model = model;
+			if (condition != null) {
+				bsccName      = model.addUniqueLabel("current_bscc", new BitSet(0));
+				nonBsccName   = model.addUniqueLabel("non_bscc_states", new BitSet(0));
+				untilBscc     = new ExpressionProb(Expression.Until(new ExpressionLabel(nonBsccName), new ExpressionLabel(bsccName)), RelOp.EQ.toString(), null);
+				//condReachBscc = new ExpressionConditional(untilBscc, condition);
+			}
+		}
+
+		public ReachBsccComputer<T> clear()
+		{
+			if (bsccName != null) {
+				model.getLabelStates(bsccName).clear();
+				model.getLabelStates(nonBsccName).clear();
+				bsccName      = null;
+				nonBsccName   = null;
+				untilBscc     = null;
+				//condReachBscc = null;
+			}
+			return this;
+		}
+
+		public double[] computeUntilProbs(BitSet nonBsccStates, BitSet bsccStates, BitSet statesOfInterest) throws PrismException
+		{
+			//if (bsccName == null) {
+			return mc.createDTMCModelChecker().computeUntilProbs(model, nonBsccStates, bsccStates).soln;
+			//}
+			/*
+			// switch label to current BSCC and compute conditional reach probs
+			model.addLabel(bsccName, bsccStates);
+			model.addLabel(nonBsccName, nonBsccStates);
+			return mc.checkExpressionConditional(model, condReachBscc, statesOfInterest).getDoubleArray();
+			*/
 		}
 	}
 
