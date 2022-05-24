@@ -142,6 +142,10 @@ public class ProbModelChecker extends NonProbModelChecker
 		else if (expr instanceof ExpressionReward) {
 			res = checkExpressionReward((ExpressionReward) expr, statesOfInterest);
 		}
+		// L operator
+		else if (expr instanceof ExpressionLongRun) {
+			res = checkExpressionLongRun((ExpressionLongRun) expr, statesOfInterest);
+		}
 		// S operator
 		else if (expr instanceof ExpressionSS) {
 			res = checkExpressionSteadyState((ExpressionSS) expr, statesOfInterest);
