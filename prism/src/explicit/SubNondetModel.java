@@ -411,4 +411,16 @@ public class SubNondetModel implements NondetModel
 	public void clearPredecessorRelation() {
 		predecessorRelation = null;
 	}
+
+	@Override
+	public String addUniqueLabel(String prefix, BitSet labelStates)
+	{
+		throw new UnsupportedOperationException();
+	}
+
+	@Override
+	public void addLabel(String name, BitSet states)
+	{
+		throw new UnsupportedOperationException();
+	}
 }

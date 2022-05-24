@@ -26,6 +26,7 @@
 
 package explicit;
 
+import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.BitSet;
 import java.util.List;
@@ -432,4 +433,16 @@ public abstract class ModelExplicit implements Model
 		predecessorRelation = null;
 	}
 
+
+	@Override
+	public String addUniqueLabel(String prefix, BitSet labelStates)
+	{
+		String label = prefix;
+		for (BigInteger i = BigInteger.ZERO; hasLabel(label); i=i.add(BigInteger.ONE)) {
+			label = prefix + "_" + i;
+		}
+
+		addLabel(label, labelStates);
+		return label;
+	}
 }
