@@ -2753,6 +2753,11 @@ public class ProbModelChecker extends NonProbModelChecker
 		return solnProbs;
 	}
 
+	public StateValues computeSteadyStateProbsForBSCC(JDDNode bscc) throws PrismException
+	{
+		return computeSteadyStateProbsForBSCC(trans, bscc);
+	}
+
 	/**
 	 * Compute steady-state probabilities for a BSCC
 	 * i.e. compute the long-run probability of being in each state of the BSCC.
