@@ -32,4 +32,7 @@ public interface MCModelChecker<M extends DTMC>
 	 * @param pre The predecessor relation of the DTMC
 	 */
 	BitSet prob1(M model, BitSet remain, BitSet target, PredecessorRelation pre) throws PrismException;
+
+	// FIXME ALG: Make generic in model type?
+	ModelCheckerResult computeSteadyStateProbsForBSCC(DTMC dtmc, BitSet states, double result[]) throws PrismException;
 }

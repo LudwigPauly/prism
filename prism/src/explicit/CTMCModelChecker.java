@@ -863,6 +863,18 @@ public class CTMCModelChecker extends ProbModelChecker implements MCModelChecker
 	/**
 	 * @see DTMCModelChecker#computeSteadyStateProbsForBSCC(DTMC, BitSet, double[], BSCCPostProcessor)
 	 */
+	public ModelCheckerResult computeSteadyStateProbsForBSCC(DTMC dtmc, BitSet states, double result[]) throws PrismException
+	{
+		if (dtmc.getModelType() == ModelType.CTMC) {
+			return computeSteadyStateProbsForBSCC((CTMC) dtmc, states, result);
+		}
+		return createDTMCModelChecker().computeSteadyStateProbsForBSCC(dtmc, states, result);
+	}
+
+
+	/**
+	 * @see DTMCModelChecker#computeSteadyStateProbsForBSCC(DTMC, BitSet, double[], BSCCPostProcessor)
+	 */
 	public ModelCheckerResult computeSteadyStateProbsForBSCC(CTMC ctmc, BitSet states, double result[]) throws PrismException
 	{
 		// We construct the embedded DTMC and do the steady-state computation there

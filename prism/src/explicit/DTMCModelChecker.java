@@ -38,7 +38,6 @@ import java.util.PrimitiveIterator.OfInt;
 
 import acceptance.AcceptanceReach;
 import acceptance.AcceptanceType;
-import common.BitSetTools;
 import common.IntSet;
 import common.IterableBitSet;
 import common.StopWatch;
@@ -1975,7 +1974,6 @@ public class DTMCModelChecker extends ProbModelChecker implements MCModelChecker
 		String bsccName                     = null;
 		String nonBsccName                  = null;
 		ExpressionProb untilBscc            = null;
-		//ExpressionConditional condReachBscc = null;
 
 		public ReachBsccComputer(T mc, DTMC model, Expression condition)
 		{
@@ -1985,7 +1983,6 @@ public class DTMCModelChecker extends ProbModelChecker implements MCModelChecker
 				bsccName      = model.addUniqueLabel("current_bscc", new BitSet(0));
 				nonBsccName   = model.addUniqueLabel("non_bscc_states", new BitSet(0));
 				untilBscc     = new ExpressionProb(Expression.Until(new ExpressionLabel(nonBsccName), new ExpressionLabel(bsccName)), RelOp.EQ.toString(), null);
-				//condReachBscc = new ExpressionConditional(untilBscc, condition);
 			}
 		}
 
@@ -1997,22 +1994,13 @@ public class DTMCModelChecker extends ProbModelChecker implements MCModelChecker
 				bsccName      = null;
 				nonBsccName   = null;
 				untilBscc     = null;
-				//condReachBscc = null;
 			}
 			return this;
 		}
 
 		public double[] computeUntilProbs(BitSet nonBsccStates, BitSet bsccStates, BitSet statesOfInterest) throws PrismException
 		{
-			//if (bsccName == null) {
 			return mc.createDTMCModelChecker().computeUntilProbs(model, nonBsccStates, bsccStates).soln;
-			//}
-			/*
-			// switch label to current BSCC and compute conditional reach probs
-			model.addLabel(bsccName, bsccStates);
-			model.addLabel(nonBsccName, nonBsccStates);
-			return mc.checkExpressionConditional(model, condReachBscc, statesOfInterest).getDoubleArray();
-			*/
 		}
 	}
 
