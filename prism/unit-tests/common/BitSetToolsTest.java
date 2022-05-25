@@ -114,8 +114,8 @@ public class BitSetToolsTest
         assertEquals(expected, actual);
     }
 
-    public BitSet complement(BitSet set, int fromIndex, int toIndex)
+    /*public BitSet complement(BitSet set, int fromIndex, int toIndex)
     {
 
-    }
+    }*/
 }
