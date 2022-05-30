@@ -302,14 +302,12 @@ public class ProbModelChecker extends NonProbModelChecker
 		String nonBsccName                  = null;
 		ExpressionProb untilBscc            = null;
 
-		public ReachBsccComputer(ProbModel model, Expression condition)
+		public ReachBsccComputer(ProbModel model)
 		{
 			this.model = model;
-			if (condition != null) {
-				bsccName      = model.addUniqueLabelDD("current_bscc", JDD.Constant(0),getDefinedLabelNames());
-				nonBsccName   = model.addUniqueLabelDD("non_bscc_states", JDD.Constant(0),getDefinedLabelNames());
-				untilBscc     = new ExpressionProb(Expression.Until(new ExpressionLabel(nonBsccName), new ExpressionLabel(bsccName)), RelOp.EQ.toString(), null);
-			}
+			bsccName      = model.addUniqueLabelDD("current_bscc", JDD.Constant(0),getDefinedLabelNames());
+			nonBsccName   = model.addUniqueLabelDD("non_bscc_states", JDD.Constant(0),getDefinedLabelNames());
+			untilBscc     = new ExpressionProb(Expression.Until(new ExpressionLabel(nonBsccName), new ExpressionLabel(bsccName)), RelOp.EQ.toString(), null);
 		}
 
 		public ReachBsccComputer clear()
@@ -341,26 +339,12 @@ public class ProbModelChecker extends NonProbModelChecker
 	 */
 	public StateValues checkExpressionLongRun(ExpressionLongRun expr, JDDNode statesOfInterest) throws PrismException
 	{
-		return checkConditionalExpressionLongRun(expr, null, statesOfInterest);
-	}
-
-	/**
-	 * Model check relativized long-run, i.e., L operator, under a condition.
-	 *
-	 * @param expr a long-run expression
-	 * @param statesOfInterest states for which the expression has to be computed
-	 * @param condition path event under which the relativized long-run is considered
-	 * @return the relativized long-run value for each state of interest
-	 * @throws PrismException
-	 */
-	public StateValues checkConditionalExpressionLongRun(ExpressionLongRun expr, Expression condition, JDDNode statesOfInterest) throws PrismException
-	{
 		JDDNode states = checkExpression(expr.getStates(), reach.copy()).convertToStateValuesMTBDD().getJDDNode();
 		assert JDD.IsZeroOneMTBDD(states) : "Boolean result expected.";
 
 		StateValues values = checkExpression(expr.getExpression(), states.copy());
 
-		ReachBsccComputer reachComputer = new ReachBsccComputer(model, condition);
+		ReachBsccComputer reachComputer = new ReachBsccComputer(model);
 		StateValues resultValues = computeLongRun(values, states, reachComputer, statesOfInterest);
 		OpRelOpBound opInfo = expr.getRelopBoundInfo(constantValues);
 		// For =? properties, just return values
@@ -376,6 +360,7 @@ public class ProbModelChecker extends NonProbModelChecker
 		resultValues.clear();
 		return new StateValuesMTBDD(resultBooleans, model);
 	}
+
 
 	/**
 	 * <br>[ REFS: <i>result</i>, DEREFS: values, states, statesOfInterest ]
