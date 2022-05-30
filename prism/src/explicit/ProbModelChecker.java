@@ -1194,6 +1194,7 @@ public class ProbModelChecker extends NonProbModelChecker
 		throw new PrismException("Computation not implemented yet");
 	}
 
+	// FIXME ALG: check types
 	/**
 	 * Model check relativized long-run, i.e., L operator.
 	 *
@@ -1204,23 +1205,6 @@ public class ProbModelChecker extends NonProbModelChecker
 	 * @throws PrismException
 	 */
 	public StateValues checkExpressionLongRun(Model model, ExpressionLongRun expr, BitSet statesOfInterest) throws PrismException
-	{
-		return checkConditionalExpressionLongRun(model, expr, null, statesOfInterest);
-	}
-
-	/**
-	 * Model check relativized long-run, i.e., L operator, under a condition.
-	 *
-	 * @param dtmc a DTMC
-	 * @param expr a long-run expression
-	 * @param statesOfInterest states for which the expression has to be computed
-	 * @param condition path event under which the relativized long-run is considered
-	 * @return the relativized long-run value for each state of interest
-	 * @throws PrismException
-	 */
-
-	// FIXME ALG: check types
-	public StateValues checkConditionalExpressionLongRun(Model model, ExpressionLongRun expr, Expression condition, BitSet statesOfInterest) throws PrismException
 	{
 		if (model.getModelType() != ModelType.DTMC && model.getModelType() != ModelType.CTMC) {
 			throw new PrismNotSupportedException("Explicit engine does not yet handle the L operator for " + model.getModelType() + "s");
@@ -1234,7 +1218,7 @@ public class ProbModelChecker extends NonProbModelChecker
 		StateValues values = checkExpression(model, expr.getExpression(), states);
 		assert values.getType() != TypeBool.getInstance() : "Non-Boolean values expected.";
 
-		ReachBsccComputer<MCModelChecker<?>> reachComputer = new DTMCModelChecker.ReachBsccComputer<>((MCModelChecker<?>) this, (DTMC) model, condition);
+		ReachBsccComputer<MCModelChecker<?>> reachComputer = new DTMCModelChecker.ReachBsccComputer<>((MCModelChecker<?>) this, (DTMC) model);
 		return computeLongRun((DTMC) model, values, states, reachComputer, statesOfInterest);
 	}
 

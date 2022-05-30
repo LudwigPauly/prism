@@ -1975,15 +1975,14 @@ public class DTMCModelChecker extends ProbModelChecker implements MCModelChecker
 		String nonBsccName                  = null;
 		ExpressionProb untilBscc            = null;
 
-		public ReachBsccComputer(T mc, DTMC model, Expression condition)
+		public ReachBsccComputer(T mc, DTMC model)
 		{
 			this.mc = mc;
 			this.model = model;
-			if (condition != null) {
-				bsccName      = model.addUniqueLabel("current_bscc", new BitSet(0));
-				nonBsccName   = model.addUniqueLabel("non_bscc_states", new BitSet(0));
-				untilBscc     = new ExpressionProb(Expression.Until(new ExpressionLabel(nonBsccName), new ExpressionLabel(bsccName)), RelOp.EQ.toString(), null);
-			}
+			bsccName      = model.addUniqueLabel("current_bscc", new BitSet(0));
+			nonBsccName   = model.addUniqueLabel("non_bscc_states", new BitSet(0));
+			untilBscc     = new ExpressionProb(Expression.Until(new ExpressionLabel(nonBsccName), new ExpressionLabel(bsccName)), RelOp.EQ.toString(), null);
+
 		}
 
 		public ReachBsccComputer<T> clear()
