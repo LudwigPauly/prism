@@ -260,6 +260,56 @@ public class StateValuesDV implements StateValues
 		values.filter(filter, d, vars, odd);
 	}
 
+	/* (non-Javadoc)
+	 * @see prism.StateValues#times(prism.StateValues)
+	 */
+	@Override
+	public void times(StateValues mult) throws PrismException
+	{
+		if (mult instanceof StateValuesDV) {
+			times((StateValuesDV)mult);
+		} else {
+			StateValuesDV multDV = mult.deepCopy().convertToStateValuesDV();
+			times(multDV);
+			multDV.clear();
+		}
+	}
+
+	public void times(StateValuesDV mult) throws PrismException
+	{
+		if (values.getSize() != mult.values.getSize()) {
+			throw new PrismException("Can not multiply probability arrays, size differs!");
+		}
+		for (int i = 0; i < values.getSize(); i++) {
+			values.setElement(i, values.getElement(i) * mult.values.getElement(i));
+		}
+	}
+
+	/* (non-Javadoc)
+	 * @see prism.StateValues#divide(prism.StateValues)
+	 */
+	@Override
+	public void divide(StateValues div) throws PrismException
+	{
+		if (div instanceof StateValuesDV) {
+			divide((StateValuesDV)div);
+		} else {
+			StateValuesDV multDV = div.deepCopy().convertToStateValuesDV();
+			divide(multDV);
+			multDV.clear();
+		}
+	}
+
+	public void divide(StateValuesDV div) throws PrismException
+	{
+		if (values.getSize() != div.values.getSize()) {
+			throw new PrismException("Can not multiply probability arrays, size differs!");
+		}
+		for (int i = 0; i < values.getSize(); i++) {
+			values.setElement(i, values.getElement(i) / div.values.getElement(i));
+		}
+	}
+
 	@Override
 	public void maxMTBDD(JDDNode vec2)
 	{
