@@ -7,8 +7,8 @@ import prism.PrismException;
  */
 public class GaussElemination
 {
-	private Function[][] l;    // L
-	private Function[][] u;    // U
+	private trianglularMatrix l;    // L
+	private trianglularMatrix u;    // U
 
 	private Function[] y;    // solution vector
 
@@ -78,7 +78,7 @@ public class GaussElemination
 		return b;
 	}
 
-	public void decompesition(Function[][] a,FunctionFactory factory) throws PrismException
+	public void decompesition(Function[][] a, FunctionFactory factory) throws PrismException
 	{
 		if (a.length != a[0].length)
 			throw new PrismException("Matrix A must be a square matrix!");
@@ -86,8 +86,8 @@ public class GaussElemination
 		this.functionFactory = factory;
 		this.n = a.length;
 
-		this.l = new Function[n][n];
-		this.u = new Function[n][n];
+		Function[][] l = new Function[n][n];
+		Function[][] u = new Function[n][n];
 
 		// init L
 		// L = I
@@ -102,16 +102,16 @@ public class GaussElemination
 
 		// init U
 		// U = A
-		this.u = a;
+		u = a;
 
-		luDecomposition();
+		luDecomposition(l, u);
 		decomposed = true;
 	}
 
-	public Function [] solveLU(Function[] b) throws PrismException
+	public Function[] solveLU(Function[] b) throws PrismException
 	{
 		// some checks
-		if(!decomposed)
+		if (!decomposed)
 			throw new PrismException("Matrix A not decomposed!");
 
 		if (n != b.length)
@@ -125,13 +125,11 @@ public class GaussElemination
 		return y;
 	}
 
-
-
 	/**
 	 * lu decomposition according to gauss elemination
 	 * @throws PrismException when devided by zero
 	 */
-	protected void luDecomposition() throws PrismException
+	protected void luDecomposition(Function[][] l, Function[][] u) throws PrismException
 	{
 		// colum iteration (n-1)
 		for (int i = 0; i < n - 1; i++) {
@@ -153,6 +151,9 @@ public class GaussElemination
 				}
 			}
 		}
+
+		this.l = new trianglularMatrix(l, false);
+		this.u = new trianglularMatrix(u, true);
 	}
 
 	/**
@@ -166,13 +167,13 @@ public class GaussElemination
 		for (int i = 0; i < n; i++) {
 			tmp = functionFactory.getZero();
 			for (int k = 0; k < i; k++) {
-				tmp = tmp.add(l[i][k].multiply(y[k]));
+				tmp = tmp.add(l.get(i, k).multiply(y[k]));
 			}
 			tmp = y[i].subtract(tmp);
-			if (l[i][i].isZero()) {
+			if (l.get(i, i).isZero()) {
 				throw new PrismException("Cannot devide by Zero");
 			}
-			y[i] = tmp.multiply(functionFactory.getOne().divide(l[i][i]));
+			y[i] = tmp.multiply(functionFactory.getOne().divide(l.get(i, i)));
 		}
 	}
 
@@ -187,14 +188,75 @@ public class GaussElemination
 		for (int i = n - 1; i >= 0; i--) {
 			tmp = functionFactory.getZero();
 			for (int k = i + 1; k < n; k++) {
-				tmp = tmp.add(u[i][k].multiply(y[k]));
+				tmp = tmp.add(u.get(i, k).multiply(y[k]));
 			}
 			tmp = y[i].subtract(tmp);
-			if (u[i][i].isZero()) {
+			if (u.get(i, i).isZero()) {
 				throw new PrismException("Cannot devide by Zero");
 			}
-			y[i] = tmp.multiply(functionFactory.getOne().divide(u[i][i]));
+			y[i] = tmp.multiply(functionFactory.getOne().divide(u.get(i, i)));
 		}
+	}
+
+	public static class trianglularMatrix
+	{
+		Function[][] matrix;
+		boolean upper;
+
+		public trianglularMatrix(Function[][] inputMatrix, boolean upper) throws PrismException
+		{
+			if (inputMatrix.length != inputMatrix[0].length)
+				throw new PrismException("Matrix must be a square matrix!");
+			int size = inputMatrix.length;
+			this.upper = upper;
+
+			matrix = new Function[size][];
+
+			if (upper) {
+				for (int i = 0; i < size; i++) {
+					matrix[i] = new Function[size - i];
+					for (int k = i; k < size; k++) {
+						matrix[i][k - i] = inputMatrix[i][k];
+					}
+				}
+			} else {
+				for (int i = 0; i < size; i++) {
+					matrix[i] = new Function[i + 1];
+					for (int k = 0; k <= i; k++) {
+						matrix[i][k] = inputMatrix[i][k];
+					}
+				}
+			}
+		}
+
+		public void set(int row, int col, Function value) throws PrismException
+		{
+			if (upper) {
+				if (col < row)
+					throw new PrismException("Out of bounds!");
+				matrix[row][col - row] = value;
+
+			} else {
+				if (col > row)
+					throw new PrismException("Out of bounds!");
+				matrix[row][col] = value;
+			}
+		}
+
+		public Function get(int row, int col) throws PrismException
+		{
+			if (upper) {
+				if (col < row)
+					throw new PrismException("Out of bounds!");
+				return matrix[row][col - row];
+
+			} else {
+				if (col > row)
+					throw new PrismException("Out of bounds!");
+				return matrix[row][col];
+			}
+		}
+
 	}
 
 }
