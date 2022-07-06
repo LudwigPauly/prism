@@ -277,7 +277,7 @@ public class PrismCL implements PrismModelListener
 		// Sort out properties to check
 		sortProperties();
 
-		if (param && numPropertiesToCheck == 0) {
+		if (param && numPropertiesToCheck == 0 && !steadystate) {
 			errorAndExit("Parametric model checking requires at least one property to check");
 		}
 
@@ -967,8 +967,8 @@ public class PrismCL implements PrismModelListener
 		File exportSteadyStateFile = null;
 
 		if (steadystate) {
-			if (param || prism.getSettings().getBoolean(PrismSettings.PRISM_EXACT_ENABLED)) {
-				mainLog.printWarning("Skipping steady-state computation in parametric / exact model checking mode, currently not supported.");
+			if (prism.getSettings().getBoolean(PrismSettings.PRISM_EXACT_ENABLED)) {
+				mainLog.printWarning("Skipping steady-state computation in exact model checking mode, currently not supported.");
 				return;
 			}
 
@@ -979,7 +979,12 @@ public class PrismCL implements PrismModelListener
 				else
 					exportSteadyStateFile = new File(exportSteadyStateFilename);
 				// Compute steady-state probabilities
-				prism.doSteadyState(exportType, exportSteadyStateFile, importinitdist ? new File(importInitDistFilename) : null);
+				if (param) {
+					prism.doSteadyStateParam(exportType, exportSteadyStateFile, importinitdist ? new File(importInitDistFilename) : null, paramNames,
+							paramLowerBounds, paramUpperBounds, propertiesFile);
+				} else {
+					prism.doSteadyState(exportType, exportSteadyStateFile, importinitdist ? new File(importInitDistFilename) : null);
+				}
 			} catch (PrismException e) {
 				// In case of error, report it and proceed
 				error(e);

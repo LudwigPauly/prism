@@ -33,6 +33,7 @@ import java.io.FileNotFoundException;
 import java.util.ArrayList;
 import java.util.List;
 
+import common.StopWatch;
 import dv.DoubleVector;
 import explicit.CTMC;
 import explicit.CTMCModelChecker;
@@ -49,11 +50,7 @@ import jdd.JDDNode;
 import jdd.JDDVars;
 import mtbdd.PrismMTBDD;
 import odd.ODDUtils;
-import param.BigRational;
-import param.ModelBuilder;
-import param.ParamModel;
-import param.ParamModelChecker;
-import param.ParamResult;
+import param.*;
 import parser.PrismParser;
 import parser.State;
 import parser.Values;
@@ -3377,6 +3374,53 @@ public class Prism extends PrismComponent implements PrismSettingsListener
 		doSteadyState(EXPORT_PLAIN, null, null);
 	}
 
+	public void doSteadyStateParam(int exportType, File fileOut, File fileIn, String[] paramNames, String[] paramLowerBounds, String[] paramUpperBounds,
+			PropertiesFile propertiesFile) throws PrismException
+	{
+		PrismLog tmpLog;
+
+		// Do some checks
+		if (!(currentModelType == ModelType.CTMC || currentModelType == ModelType.DTMC))
+			throw new PrismException("Steady-state probabilities only computed for DTMCs/CTMCs");
+		if (exportType == EXPORT_MRMC)
+			exportType = EXPORT_PLAIN; // no specific states format for MRMC
+		if (exportType == EXPORT_ROWS)
+			exportType = EXPORT_PLAIN; // rows format does not apply to states output
+
+		// Print message
+		mainLog.printSeparator();
+		mainLog.println("\nComputing steady-state probabilities...");
+
+		param.ModelBuilder builder = new ModelBuilder(this, param.ParamMode.PARAMETRIC);
+		ParamModel model = builder.constructModel(new ModulesFileModelGeneratorSymbolic(currentModulesFile, this), paramNames, paramLowerBounds,
+				paramUpperBounds);
+
+		StopWatch watch = new StopWatch().start();
+
+		param.StateValues probs = computeSteadyStateProbabilitiesParam(model, fileIn, builder, paramNames, paramLowerBounds, paramUpperBounds, propertiesFile);
+
+		watch.stop();
+
+		// print message
+		mainLog.print("\nPrinting steady-state probabilities ");
+		mainLog.print(getStringForExportType(exportType) + " ");
+		mainLog.println(getDestinationStringForFile(fileOut));
+
+		// create new file log or use main log
+		tmpLog = getPrismLogForFile(fileOut);
+
+		// print state values
+		probs.print(tmpLog, ParamMode.PARAMETRIC, model.getStatesList(), fileOut == null, fileOut == null, fileOut == null);
+
+		mainLog.println("\nTime for steady-state probability computation: " + watch.elapsedSeconds() + " seconds.");
+
+		// tidy up
+		probs.clear();
+
+		if (fileOut != null)
+			tmpLog.close();
+	}
+
 	/**
 	 * Compute steady-state probabilities for the current model (DTMCs/CTMCs only).
 	 * Output probability distribution to a file (or, if {@code fileOut} is null, to log). 
@@ -3476,6 +3520,26 @@ public class Prism extends PrismComponent implements PrismSettingsListener
 			probs = mcCTMC.doSteadyState((CTMC) model, fileIn);
 			break;
 		}
+		default:
+			throw new PrismException("Steady-state probabilities only computed for DTMCs/CTMCs");
+		}
+		return probs;
+	}
+
+	public param.StateValues computeSteadyStateProbabilitiesParam(ParamModel model, File fileIn, param.ModelBuilder builder, String[] paramNames,
+			String[] paramLowerBounds, String[] paramUpperBounds, PropertiesFile propertiesFile) throws PrismException
+	{
+		param.StateValues probs;
+
+		switch (model.getModelType()) {
+		case DTMC:
+		case CTMC:
+			ParamModelChecker mc = new ParamModelChecker(this, param.ParamMode.PARAMETRIC);
+			mc.setModelBuilder(builder);
+			mc.setParameters(paramNames, paramLowerBounds, paramUpperBounds);
+			mc.setModulesFileAndPropertiesFile(currentModulesFile, propertiesFile);
+			probs = mc.doSteadyState(model, fileIn);
+			break;
 		default:
 			throw new PrismException("Steady-state probabilities only computed for DTMCs/CTMCs");
 		}
