@@ -28,6 +28,7 @@
 
 package param;
 
+import java.io.File;
 import java.util.ArrayList;
 import java.util.BitSet;
 import java.util.List;
@@ -35,6 +36,7 @@ import java.util.function.IntPredicate;
 
 import common.IterableStateSet;
 import parser.State;
+import parser.type.Type;
 import parser.type.TypeBool;
 import prism.PrismLog;
 
@@ -131,6 +133,11 @@ public final class StateValues
 		}
 
 		return hash;
+	}
+
+	public void clear()
+	{
+		values = null;
 	}
 
 	/**
@@ -309,4 +316,38 @@ public final class StateValues
 		}
 	}
 
+	public void print(PrismLog log, ParamMode mode, List<State> statesList, boolean printSparse, boolean printStates, boolean printIndices)
+	{
+
+		int count = 0;
+
+		for (int n = 0; n < values.size(); n++) {
+			if (!printSparse || !getStateValueAsFunction(n).isZero()) {
+				if (printIndices) {
+					log.print(n);
+					log.print(":");
+				}
+
+				if (printStates && statesList != null)
+					log.print(statesList.get(n).toString());
+
+				if (printIndices || printStates)
+					log.print("=");
+
+				if (mode == ParamMode.EXACT) {
+					BigRational value = getStateValueAsFunction(n).asBigRational();
+					log.println(value + "   (" + value.toApproximateString() + ")");
+				} else {
+					log.println(getStateValueAsFunction(n));
+				}
+				count++;
+			}
+		}
+
+		// Check if all zero
+		if (printSparse && count == 0) {
+			log.println("(all zero)");
+			return;
+		}
+	}
 }
