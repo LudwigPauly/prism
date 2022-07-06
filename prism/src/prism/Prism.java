@@ -58,6 +58,7 @@ import param.ModelBuilder;
 import param.ParamModel;
 import param.ParamModelChecker;
 import param.ParamResult;
+import param.ParamMode;
 import parser.PrismParser;
 import parser.State;
 import parser.Values;
@@ -3630,6 +3631,104 @@ public class Prism extends PrismComponent implements PrismSettingsListener
 		doSteadyState(EXPORT_PLAIN, null, null);
 	}
 
+	public void doSteadyStateExact(int exportType, File fileOut, File fileIn, PropertiesFile propertiesFile) throws PrismException
+	{
+		PrismLog tmpLog;
+
+		// Do some checks
+		if (!(currentModelType == ModelType.CTMC || currentModelType == ModelType.DTMC))
+			throw new PrismException("Steady-state probabilities only computed for DTMCs/CTMCs");
+		if (exportType == EXPORT_MRMC)
+			exportType = EXPORT_PLAIN; // no specific states format for MRMC
+		if (exportType == EXPORT_ROWS)
+			exportType = EXPORT_PLAIN; // rows format does not apply to states output
+
+		// Print message
+		mainLog.printSeparator();
+		mainLog.println("\nComputing steady-state probabilities...");
+
+		// Set up a dummy parameter (not used)
+		String[] paramNames = new String[] { "dummy" };
+		String[] paramLowerBounds = new String[] { "0" };
+		String[] paramUpperBounds = new String[] { "1" };
+
+		param.ModelBuilder builder = new ModelBuilder(this, param.ParamMode.EXACT);
+		FunctionFactory functionFactory = builder.getFunctionFactory(paramNames, paramLowerBounds, paramUpperBounds);
+		ParamModel model = builder.constructModel(ModulesFileModelGenerator.createForRationalFunctions(currentModulesFile,functionFactory,this));
+
+		long l = System.currentTimeMillis();
+
+		param.StateValues probs = computeSteadyStateProbabilitiesParam(model, fileIn, paramNames, paramLowerBounds, paramUpperBounds, propertiesFile);
+
+		l = System.currentTimeMillis() - l;
+
+		// print message
+		mainLog.print("\nPrinting steady-state probabilities ");
+		mainLog.print(getStringForExportType(exportType) + " ");
+		mainLog.println(getDestinationStringForFile(fileOut));
+
+		// create new file log or use main log
+		tmpLog = getPrismLogForFile(fileOut);
+
+		// print state values
+		probs.print(tmpLog, param.ParamMode.EXACT, model.getStatesList(), fileOut == null, fileOut == null, fileOut == null);
+
+		mainLog.println("\nTime for steady-state probability computation: " + l / 1000.0 + " seconds.");
+
+		// tidy up
+		probs.clear();
+
+		if (fileOut != null)
+			tmpLog.close();
+	}
+
+	public void doSteadyStateParam(int exportType, File fileOut, File fileIn, String[] paramNames, String[] paramLowerBounds, String[] paramUpperBounds,
+			PropertiesFile propertiesFile) throws PrismException
+	{
+		PrismLog tmpLog;
+
+		// Do some checks
+		if (!(currentModelType == ModelType.CTMC || currentModelType == ModelType.DTMC))
+			throw new PrismException("Steady-state probabilities only computed for DTMCs/CTMCs");
+		if (exportType == EXPORT_MRMC)
+			exportType = EXPORT_PLAIN; // no specific states format for MRMC
+		if (exportType == EXPORT_ROWS)
+			exportType = EXPORT_PLAIN; // rows format does not apply to states output
+
+		// Print message
+		mainLog.printSeparator();
+		mainLog.println("\nComputing steady-state probabilities...");
+
+		param.ModelBuilder builder = new ModelBuilder(this, param.ParamMode.PARAMETRIC);
+		FunctionFactory functionFactory = builder.getFunctionFactory(paramNames, paramLowerBounds, paramUpperBounds);
+		ParamModel model = builder.constructModel(ModulesFileModelGenerator.createForRationalFunctions(currentModulesFile,functionFactory,this));
+
+		long l = System.currentTimeMillis();
+
+		param.StateValues probs = computeSteadyStateProbabilitiesParam(model, fileIn, paramNames, paramLowerBounds, paramUpperBounds, propertiesFile);
+
+		l = System.currentTimeMillis() - l;
+
+		// print message
+		mainLog.print("\nPrinting steady-state probabilities ");
+		mainLog.print(getStringForExportType(exportType) + " ");
+		mainLog.println(getDestinationStringForFile(fileOut));
+
+		// create new file log or use main log
+		tmpLog = getPrismLogForFile(fileOut);
+
+		// print state values
+		probs.print(tmpLog, ParamMode.PARAMETRIC, model.getStatesList(), fileOut == null, fileOut == null, fileOut == null);
+
+		mainLog.println("\nTime for steady-state probability computation: " + l / 1000.0 + " seconds.");
+
+		// tidy up
+		probs.clear();
+
+		if (fileOut != null)
+			tmpLog.close();
+	}
+
 	/**
 	 * Compute steady-state probabilities for the current model (DTMCs/CTMCs only).
 	 * Output probability distribution to a file (or, if {@code fileOut} is null, to log). 
@@ -3731,6 +3830,25 @@ public class Prism extends PrismComponent implements PrismSettingsListener
 			probs = mcCTMC.doSteadyState((CTMC<Double>) model, fileIn);
 			break;
 		}
+		default:
+			throw new PrismException("Steady-state probabilities only computed for DTMCs/CTMCs");
+		}
+		return probs;
+	}
+
+	public param.StateValues computeSteadyStateProbabilitiesParam(ParamModel model, File fileIn, String[] paramNames,
+			String[] paramLowerBounds, String[] paramUpperBounds, PropertiesFile propertiesFile) throws PrismException
+	{
+		param.StateValues probs;
+
+		switch (model.getModelType()) {
+		case DTMC:
+		case CTMC:
+			ParamModelChecker mc = new ParamModelChecker(this, param.ParamMode.PARAMETRIC);
+			mc.setParameters(paramNames, paramLowerBounds, paramUpperBounds);
+			mc.setModulesFileAndPropertiesFile(currentModulesFile, propertiesFile);
+			probs = mc.doSteadyState(model, fileIn);
+			break;
 		default:
 			throw new PrismException("Steady-state probabilities only computed for DTMCs/CTMCs");
 		}
