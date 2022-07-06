@@ -56,7 +56,17 @@ package param;
 
 import java.util.BitSet;
 import java.util.List;
+import java.util.PrimitiveIterator;
+import java.util.ArrayList;
+import java.util.Map;
+import java.util.Iterator;
 
+import java.io.File;
+
+import common.IterableBitSet;
+import common.StopWatch;
+import explicit.SCCConsumerStore;
+import explicit.Utils;
 import param.Lumper.BisimType;
 import param.StateEliminator.EliminationOrder;
 import parser.State;
@@ -140,6 +150,11 @@ final public class ParamModelChecker extends PrismComponent
 	private int numRandomPoints;
 	private Lumper.BisimType bisimType;
 	private boolean simplifyRegions;
+
+	// Use precomputation algorithms in model checking?
+	protected boolean precomp = true;
+	protected boolean prob0 = true;
+	protected boolean prob1 = true;
 
 	/**
 	 * Constructor
@@ -1250,4 +1265,552 @@ final public class ParamModelChecker extends PrismComponent
 	public static void closeDown() {
 		ComputerThreads.terminate();
 	}
+
+	// Steady-state computation
+
+	/**
+	 * Compute steady-state probability
+	 * @param model The ParamModel
+	 * @return Steady-state probabilities as StateValues
+	 * @throws PrismException
+	 */
+	public StateValues doSteadyState(ParamModel model) throws PrismException
+	{
+		return doSteadyState(model, (explicit.StateValues) null);
+	}
+
+	/**
+	 * Compute steady-state probability with initial state distribution
+	 * @param model The ParamModel
+	 * @param initDistFile Initial state distribution file
+	 * @return Steady-state probabilities as StateValues
+	 * @throws PrismException
+	 */
+	public StateValues doSteadyState(ParamModel model, File initDistFile) throws PrismException
+	{
+		explicit.StateValues initDist = readDistributionFromFile(initDistFile, model);
+		return doSteadyState(model, initDist);
+	}
+
+	/**
+	 * Compute steady-state probability with initial state distribution
+	 * @param model The ParamModel
+	 * @param initDist Initial state distribution as explicit StateValues
+	 * @return Steady-state probabilities as StateValues
+	 * @throws PrismException
+	 */
+	public StateValues doSteadyState(ParamModel model, explicit.StateValues initDist) throws PrismException
+	{
+		explicit.StateValues initDistNew = (initDist == null) ? buildInitialDistribution(model) : initDist;
+
+		return computeSteadyStateProbs(model, initDistNew.getDoubleArray());
+	}
+
+	/**
+	 * Generate a probability distribution, stored as a explicit StateValues object, from a file.
+	 * If {@code distFile} is null, so is the return value.
+	 * @param distFile Initial state distribution file
+	 * @param model The ParamModel
+	 * @return Initial state distribution as explicit StateValues
+	 * @throws PrismException
+	 */
+	public explicit.StateValues readDistributionFromFile(File distFile, ParamModel model) throws PrismException
+	{
+		explicit.StateValues dist = null;
+
+		if (distFile != null) {
+			mainLog.println("\nImporting probability distribution from file \"" + distFile + "\"...");
+			dist = explicit.StateValues.createFromFile(TypeDouble.getInstance(), distFile, model);
+		}
+		return dist;
+	}
+
+	/**
+	 * Build a probability distribution, stored as a explict StateValues object,
+	 * from the initial states info of the current model: either probability 1 for
+	 * the (single) initial state or equiprobable over multiple initial states.
+	 * @param model The ParamModel
+	 * @return Initial state distribution as explicit StateValues
+	 */
+	private explicit.StateValues buildInitialDistribution(ParamModel model) throws PrismException
+	{
+
+		int numInitStates = model.getNumInitialStates();
+		if (numInitStates == 1) {
+			int sInit = model.getFirstInitialState();
+			return explicit.StateValues.create(TypeDouble.getInstance(), s -> s == sInit ? 1.0 : 0.0, model);
+		} else {
+			double pInit = 1.0 / numInitStates;
+			return explicit.StateValues.create(TypeDouble.getInstance(), s -> model.isInitialState(s) ? pInit : 0.0, model);
+		}
+	}
+
+	/**
+	 * Compute steady-state probabilities
+	 * @param model The ParamModel
+	 * @param initDist Initial state distribution
+	 * @return Steady-state probabilities as StateValues
+	 * @throws PrismException
+	 */
+	public StateValues computeSteadyStateProbs(ParamModel model, double initDist[]) throws PrismException
+	{
+		int numStates = model.getNumStates();
+
+
+		if(functionFactory == null) functionFactory = model.getFunctionFactory();
+
+		Function[] solnProbs = functionFactory.createFunctionArray(numStates,functionFactory.getZero());
+
+		// Compute BSCCs
+		SCCConsumerStore sccStore = new SCCConsumerStore();
+		explicit.SCCComputer sccComputer = explicit.SCCComputer.createSCCComputer(this, model, sccStore);
+		sccComputer.computeSCCs();
+		List<BitSet> bsccs = sccStore.getBSCCs();
+		BitSet notInBSCCs = sccStore.getNotInBSCCs();
+		int numBSCCs = bsccs.size();
+
+		// Compute support of initial distribution
+		int numInit = 0;
+		BitSet init = new BitSet();
+		for (int i = 0; i < numStates; i++) {
+			if (initDist[i] > 0)
+				init.set(i);
+			numInit++;
+		}
+
+		// Determine whether initial states are all in the same BSCC
+		int initInOneBSCC = -1;
+		for (int b = 0; b < numBSCCs; b++) {
+			// test subset via setminus
+			BitSet notInB = (BitSet) init.clone();
+			notInB.andNot(bsccs.get(b));
+			if (notInB.isEmpty()) {
+				// all init states in b
+				// >> finish
+				initInOneBSCC = b;
+				break;
+			} else if (notInB.cardinality() < numInit) {
+				// some init states in b and some not
+				// >> abort
+				break;
+			}
+			// no init state in b
+			// >> try next BSCC
+		}
+
+		// If all initial states are in the same BSCC, it's easy...
+		// Just compute steady-state probabilities for the BSCC
+		if (initInOneBSCC > -1) {
+			mainLog.println("\nInitial states are all in one BSCC (so no reachability probabilities computed)");
+			BitSet bscc = bsccs.get(initInOneBSCC);
+			solnProbs = computeSteadyStateProbsForBSCC(model, bscc);
+		}
+
+		// Otherwise, have to consider all the BSCCs
+		else {
+			// Compute probability of reaching each BSCC from initial distribution
+			Function[] probBSCCs = new Function[numBSCCs];
+			for (int b = 0; b < numBSCCs; b++) {
+				mainLog.println("\nComputing probability of reaching BSCC " + (b + 1));
+				BitSet bscc = bsccs.get(b);
+				// Compute probabilities
+				Function [] reachProbs = computeUntilProbs(model, notInBSCCs, bscc);
+
+				probBSCCs[b] = functionFactory.getZero();
+
+				for (int i = 0; i < numStates; i++) {
+					// probBSCC[b] += initDist[i] * reachProb[i]
+					Function tmp = functionFactory.fromBigRational(new BigRational(initDist[i]));
+					probBSCCs[b] = probBSCCs[b].add(tmp.multiply(reachProbs[i]));
+				}
+				mainLog.print("\nProbability of reaching BSCC " + (b + 1) + ": " + probBSCCs[b] + "\n");
+			}
+
+			// Compute steady-state probabilities for each BSCC
+			for (int b = 0; b < numBSCCs; b++) {
+				mainLog.println("\nComputing steady-state probabilities for BSCC " + (b + 1));
+				BitSet bscc = bsccs.get(b);
+				// Compute steady-state probabilities for the BSCC
+				Function[] bsccProbs = computeSteadyStateProbsForBSCC(model, bscc);
+				// Multiply by BSCC reach prob
+				int k = 0;
+				for (int i = bscc.nextSetBit(0); i >= 0; i = bscc.nextSetBit(i + 1)) {
+					solnProbs[i] = bsccProbs[k];
+					solnProbs[i] = solnProbs[i].multiply(probBSCCs[b]);
+					k++;
+				}
+			}
+		}
+
+		// solnProbs is the result
+		StateValues solnProbs2 = new StateValues(solnProbs.length, model.getFirstInitialState());
+		for (int i = 0; i < solnProbs.length; i++) {
+			solnProbs2.setStateValue(i, solnProbs[i]);
+		}
+
+		return solnProbs2;
+	}
+
+	/**
+	 * Compute steady-state probabilities for a BSCC
+	 * @param model The ParamModel
+	 * @param states BitSet of states in BSCC
+	 * @return Steady-state probabilities as Function array
+	 * @throws PrismException
+	 */
+	public Function[] computeSteadyStateProbsForBSCC(ParamModel model, BitSet states) throws PrismException
+	{
+
+		mainLog.println("Starting gauss elemination ...");
+		StopWatch watch = new StopWatch(mainLog).start();
+
+		// construct matrices
+		int numOfStates = states.cardinality();
+
+		// transition matrix of markov chain
+		Function[][] transitionMatrix = new Function[numOfStates][numOfStates];
+
+		Function[][] identityMatrix = new Function[numOfStates][numOfStates];
+		Function[] b = new Function[numOfStates];
+
+		// fill transition matrix
+
+		IterableBitSet bscc = new IterableBitSet(states);
+
+		List<Integer> bsccStates = new ArrayList<Integer>();
+
+		for (PrimitiveIterator.OfInt iter = bscc.iterator(); iter.hasNext(); ) {
+			bsccStates.add(iter.nextInt());
+
+		}
+
+		// fill transition matrix with zeros
+		for (int k = 0; k < numOfStates; k++) {
+			for (int i = 0; i < numOfStates; i++) {
+				transitionMatrix[k][i] = functionFactory.getZero();
+			}
+		}
+
+		//fill in transitions
+
+		int index = 0;
+		for (int state : bsccStates) {
+			Iterator<Map.Entry<Integer, Function>> iterator = model.getTransitionsIterator(state, 0);
+			while (iterator.hasNext()) {
+				Map.Entry<Integer, Function> entry = iterator.next();
+				int a = bsccStates.indexOf(entry.getKey());
+				transitionMatrix[index][a] = transitionMatrix[index][a].add(entry.getValue());
+			}
+			index++;
+		}
+
+		// fill identityMatrix
+
+		for (int k = 0; k < numOfStates; k++) {
+			for (int i = 0; i < numOfStates; i++) {
+				if (i == k)
+					identityMatrix[k][i] = functionFactory.getOne();
+				else
+					identityMatrix[k][i] = functionFactory.getZero();
+			}
+		}
+
+		// transitionMatrix - identityMatrix
+
+		for (int k = 0; k < numOfStates; k++) {
+			for (int i = 0; i < numOfStates; i++) {
+				transitionMatrix[k][i] = transitionMatrix[k][i].subtract(identityMatrix[k][i]);
+			}
+		}
+
+		// transpose transition matrix
+
+		for (int k = 0; k < numOfStates; k++) {
+			for (int i = k + 1; i < numOfStates; i++) {
+				Function tmp = transitionMatrix[i][k];
+				transitionMatrix[i][k] = transitionMatrix[k][i];
+				transitionMatrix[k][i] = tmp;
+			}
+		}
+
+		// when model is ctmc, then multiply columns with exit rate of corresponding state
+
+		if (model.getModelType() == ModelType.CTMC) {
+			int k = 0;
+			for (int state : bsccStates) {
+				for (int i = 0; i < transitionMatrix.length; i++) {
+					transitionMatrix[i][k] = transitionMatrix[i][k].multiply(model.sumLeaving(state));
+				}
+				k++;
+			}
+		}
+
+		// Change the first equation to:
+		// x1 + ... + xk = 1 |for k = num of states
+
+		// fill up vector b with all zero except b0
+		// b0 = 1
+
+		b = functionFactory.createFunctionArray(numOfStates,functionFactory.getZero());
+		b[0] = functionFactory.getOne();
+
+		// change first row of transition to 1
+		transitionMatrix[0] = functionFactory.createFunctionArray(numOfStates,functionFactory.getOne());
+
+		// solve linear system
+		GaussElimination gaussElimination = new GaussElimination();
+		Function[] result = gaussElimination.solve(transitionMatrix, b, functionFactory);
+
+		watch.stop();
+		mainLog.println("Gauss elemination finished succesfully in " + watch.elapsedSeconds() + " seconds.");
+
+		return result;
+	}
+
+	/**
+	 * Compute reachability/until probabilities.
+	 * i.e. compute the min/max probability of reaching a state in {@code target},
+	 * while remaining in those in {@code remain}.
+	 * @param model The ParamModel
+	 * @param remain Remain in these states (optional: null means "all")
+	 * @param target Target states
+	 * @param initDist Distribution of init states
+	 * @return Reach probability of target
+	 * @throws PrismException
+	 */
+	public Function [] computeUntilProbs(ParamModel model, BitSet remain, BitSet target) throws PrismException
+	{
+		Function[] reachProb = new Function[model.getNumStates()];
+		// Check for deadlocks in non-target state (because breaks e.g. prob1)
+		// TODO: implement checkForDeadlocks
+		//model.checkForDeadlocks(target);
+
+		// Start probabilistic reachability
+		StopWatch watch = new StopWatch(mainLog).start();
+		mainLog.println("\nStarting probabilistic reachability...");
+
+		BitSet no, yes;
+		int n, numYes, numNo;
+		n = model.getNumStates();
+
+		// Precomputation
+		if (precomp && prob0) {
+			no = prob0(model, remain, target);
+		} else {
+			no = new BitSet();
+		}
+
+		if (precomp && prob1) {
+			yes = prob1(model, remain, target);
+
+		} else {
+			yes = (BitSet) target.clone();
+		}
+
+		// Print results of precomputation
+		numYes = yes.cardinality();
+		numNo = no.cardinality();
+		mainLog.println("target=" + target.cardinality() + ", yes=" + numYes + ", no=" + numNo + ", maybe=" + (n - (numYes + numNo)));
+
+		// Compute probabilities (if needed)
+		if (numYes + numNo < n) {
+			constraintChecker = new ConstraintChecker(numRandomPoints);
+			for (int i = 0; i < model.getNumStates(); i++) {
+				// compute reach prob for every init state
+
+				if (yes.get(i)) {
+					reachProb[i] = functionFactory.getOne();
+				} else if (no.get(i)) {
+					reachProb[i] = functionFactory.getZero();
+				} else {
+					regionFactory = new BoxRegionFactory(functionFactory, constraintChecker, precision, model.getNumStates(), i, simplifyRegions, splitMethod);
+					valueComputer = new ValueComputer(this, mode, model, regionFactory, precision, eliminationOrder, bisimType);
+
+					RegionValues b1 = new RegionValues(regionFactory);
+					RegionValues b2 = new RegionValues(regionFactory);
+					StateValues st1 = new StateValues(model.getNumStates(), i, true);
+					BoxRegion br = new BoxRegion((BoxRegionFactory) regionFactory, paramLower, paramUpper);
+					b1.add(br, st1);
+
+					StateValues st2 = new StateValues(model.getNumStates(), i, false);
+
+					IterableBitSet iterator = new IterableBitSet(target);
+
+					for (PrimitiveIterator.OfInt iter = iterator.iterator(); iter.hasNext(); ) {
+						st2.setStateValue(iter.nextInt(), true);
+					}
+					b2.add(br, st2);
+
+					RegionValues regionValues = valueComputer.computeUnbounded(b1, b2, false, null);
+					StateValues stateValues = regionValues.getResult(0);
+
+					reachProb[i] = stateValues.getStateValueAsFunction(i);
+				}
+
+			}
+		} else {
+			double[] tmp = Utils.bitsetToDoubleArray(yes, n);
+			for (int i = 0; i < model.getNumStates(); i++) {
+				if(yes.get(i)){
+					reachProb[i] = functionFactory.getOne();
+				} else {
+					reachProb[i] = functionFactory.getZero();
+				}
+			}
+		}
+
+		// Finished probabilistic reachability
+		watch.stop();
+		mainLog.println("Probabilistic reachability took " + watch.elapsedSeconds() + " seconds.");
+
+		return reachProb;
+	}
+
+	/**
+	 * Prob0 precomputation algorithm (using a fixed-point computation),
+	 * i.e. determine the states of a ParamModel which, with probability 0,
+	 * reach a state in {@code target}, while remaining in those in {@code remain}.
+	 * @param model The ParamModel
+	 * @param remain Remain in these states (optional: {@code null} means "all")
+	 * @param target Target states
+	 */
+	public BitSet prob0(ParamModel model, BitSet remain, BitSet target)
+	{
+		int n, iters;
+		BitSet u, soln, unknown;
+		boolean u_done;
+		long timer;
+
+		// Start precomputation
+		timer = System.currentTimeMillis();
+
+		mainLog.println("Starting Prob0...");
+
+		// Special case: no target states
+		if (target.cardinality() == 0) {
+			soln = new BitSet(model.getNumStates());
+			soln.set(0, model.getNumStates());
+			return soln;
+		}
+
+		// Initialise vectors
+		n = model.getNumStates();
+		u = new BitSet(n);
+		soln = new BitSet(n);
+
+		// Determine set of states actually need to perform computation for
+		unknown = new BitSet();
+		unknown.set(0, n);
+		unknown.andNot(target);
+		if (remain != null)
+			unknown.and(remain);
+
+		// Fixed point loop
+		iters = 0;
+		u_done = false;
+		// Least fixed point - should start from 0 but we optimise by
+		// starting from 'target', thus bypassing first iteration
+		u.or(target);
+		soln.or(target);
+		while (!u_done) {
+			iters++;
+			// Single step of Prob0
+			model.prob0step(unknown, u, true, soln);
+
+			// Check termination
+			u_done = soln.equals(u);
+			// u = soln
+			u.clear();
+			u.or(soln);
+		}
+
+		// Negate
+		u.flip(0, n);
+
+		// Finished precomputation
+		timer = System.currentTimeMillis() - timer;
+
+		mainLog.print("Prob0");
+		mainLog.println(" took " + iters + " iterations and " + timer / 1000.0 + " seconds.");
+
+		return u;
+	}
+
+	/**
+	 * Prob1 precomputation algorithm (using a fixed-point computation)
+	 * i.e. determine the states of a ParamModel which, with probability 1,
+	 * reach a state in {@code target}, while remaining in those in {@code remain}.
+	 * @param model The ParamModel
+	 * @param remain Remain in these states (optional: {@code null} means "all")
+	 * @param target Target states
+	 */
+	public BitSet prob1(ParamModel model, BitSet remain, BitSet target)
+	{
+		int n, iters;
+		BitSet u, v, soln, unknown;
+		boolean u_done, v_done;
+		long timer;
+
+		// Start precomputation
+		timer = System.currentTimeMillis();
+
+		mainLog.println("Starting Prob1...");
+
+		// Special case: no target states
+		if (target.cardinality() == 0) {
+			return new BitSet(model.getNumStates());
+		}
+
+		// Initialise vectors
+		n = model.getNumStates();
+		u = new BitSet(n);
+		v = new BitSet(n);
+		soln = new BitSet(n);
+
+		// Determine set of states actually need to perform computation for
+		unknown = new BitSet();
+		unknown.set(0, n);
+		unknown.andNot(target);
+		if (remain != null)
+			unknown.and(remain);
+
+		// Nested fixed point loop
+		iters = 0;
+		u_done = false;
+		// Greatest fixed point
+		u.set(0, n);
+		while (!u_done) {
+			v_done = false;
+			// Least fixed point - should start from 0 but we optimise by
+			// starting from 'target', thus bypassing first iteration
+			v.clear();
+			v.or(target);
+			soln.clear();
+			soln.or(target);
+			while (!v_done) {
+				iters++;
+				// Single step of Prob1
+				model.prob1step(unknown, u, v, true, soln);
+				// Check termination (inner)
+				v_done = soln.equals(v);
+				// v = soln
+				v.clear();
+				v.or(soln);
+			}
+			// Check termination (outer)
+			u_done = v.equals(u);
+			// u = v
+			u.clear();
+			u.or(v);
+		}
+
+		// Finished precomputation
+		timer = System.currentTimeMillis() - timer;
+
+		mainLog.print("Prob1");
+		mainLog.println(" took " + iters + " iterations and " + timer / 1000.0 + " seconds.");
+
+		return u;
+	}
+
 }
