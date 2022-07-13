@@ -2028,6 +2028,10 @@ public class Prism extends PrismComponent implements PrismSettingsListener
 					expf2mtbdd = new ExplicitFiles2MTBDD(this);
 					currentModel = expf2mtbdd.build(explicitFilesStatesFile, explicitFilesTransFile, explicitFilesLabelsFile, currentModulesFile,
 							explicitFilesNumStates);
+					ExplicitFilesRewardGenerator erfg4m = new ExplicitFilesRewardGenerator4MTBDD(this, explicitFilesStateRewardsFile,
+							explicitFilesNumStates);
+					currentRewardGenerator = erfg4m;
+
 				} else {
 					currentModelExpl = new ExplicitFiles2Model(this).build(explicitFilesStatesFile, explicitFilesTransFile, explicitFilesLabelsFile, currentModulesFile, explicitFilesNumStates);
 					//currentModelGenerator = new ModelModelGenerator(currentModelExpl, currentModelInfo);
