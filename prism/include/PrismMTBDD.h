@@ -221,7 +221,7 @@ JNIEXPORT jlong JNICALL Java_mtbdd_PrismMTBDD_PM_1StochTransient
  * Signature: (JLjava/lang/String;JIJILjava/lang/String;)I
  */
 JNIEXPORT jint JNICALL Java_mtbdd_PrismMTBDD_PM_1ExportVector
-  (JNIEnv *, jclass, jlong, jstring, jlong, jint, jlong, jint, jstring);
+  (JNIEnv *, jclass, jlong, jstring, jlong, jint, jlong, jint, jstring, jstring, jboolean);
 
 /*
  * Class:     mtbdd_PrismMTBDD

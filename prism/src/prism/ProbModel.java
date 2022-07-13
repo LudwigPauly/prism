@@ -839,7 +839,7 @@ public class ProbModel implements Model
 
 	// returns string containing files used if there were more than 1, null otherwise
 
-	public String exportStateRewardsToFile(int exportType, File file, int precision) throws FileNotFoundException, PrismException
+	public String exportStateRewardsToFile(int exportType, File file, boolean noexportheaders, int precision) throws FileNotFoundException, PrismException
 	{
 		if (numRewardStructs == 0)
 			throw new PrismException("There are no state rewards to export");
@@ -851,7 +851,7 @@ public class ProbModel implements Model
 				filename = PrismUtils.addCounterSuffixToFilename(filename, i + 1);
 				allFilenames += ((i > 0) ? ", " : "") + filename;
 			}
-			PrismMTBDD.ExportVector(stateRewards[i], "c" + (i + 1), allDDRowVars, odd, exportType, filename,precision);
+			PrismMTBDD.ExportVector(stateRewards[i], "c" + (i + 1), allDDRowVars, odd, exportType, filename,precision, rewardStructNames[i], noexportheaders);
 		}
 		return (allFilenames.length() > 0) ? allFilenames : null;
 	}

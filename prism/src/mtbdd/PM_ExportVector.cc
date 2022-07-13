@@ -53,7 +53,9 @@ jlong __jlongpointer va,	// vars
 jint num_vars,
 jlong __jlongpointer od,	// odd
 jint et,		// export type
-jstring fn		// filename
+jstring fn,		// filename
+jstring rsn,    // reward struct name
+jboolean neh    // noexportheaders
 )
 {
 	DdNode *vector = jlong_to_DdNode(ve);		// vector
@@ -66,17 +68,26 @@ jstring fn		// filename
 	
 	// print file header
 	switch (export_type) {
-	case EXPORT_PLAIN: export_string("%d %.0f\n", odd->eoff+odd->toff, DD_GetNumMinterms(ddman, vector, num_vars)); break;
-	case EXPORT_MATLAB: export_string("%s = sparse(%d,1);\n", export_name, odd->eoff+odd->toff, odd->eoff+odd->toff); break;
+	case EXPORT_PLAIN: // add header to srew file, when not disabled
+                           if (!neh) {
+                               if (rsn) {
+                                   const char *header = env->GetStringUTFChars(rsn,0);
+                                   export_string("# Reward structure: \"%s\"\n", header);
+                               }
+                               export_string("# State rewards\n");
+                           }
+                           export_string("%" PRId64 " %.0f\n", odd->eoff+odd->toff, DD_GetNumMinterms(ddman, vector, num_vars));
+                           break;
+	case EXPORT_MATLAB:    export_string("%s = sparse(%d,1);\n", export_name, odd->eoff+odd->toff, odd->eoff+odd->toff); break;
 	}
-	
+
 	// print main part of file
 	export_rec(vector, vars, num_vars, 0, odd, 0);
-	
+
 	// close file, etc.
 	if (export_file) fclose(export_file);
 	env->ReleaseStringUTFChars(na, export_name);
-	
+
 	return 0;
 }
 

@@ -2552,7 +2552,7 @@ public class Prism extends PrismComponent implements PrismSettingsListener
 			mainLog.println(getDestinationStringForFile(file));
 
 			// do export
-			s = currentModel.exportStateRewardsToFile(exportType, file,precision);
+			s = currentModel.exportStateRewardsToFile(exportType, file,noexportheaders,precision);
 			if (s != null)
 				mainLog.println("Rewards exported to files: " + s);
 		}

@@ -201,13 +201,13 @@ public interface Model
 
 	void exportToFile(int exportType, boolean explicit, File file, int precision) throws FileNotFoundException, PrismException;
 
-	default void exportStateRewardsToFile(int exportType, File file) throws FileNotFoundException, PrismException
+	default void exportStateRewardsToFile(int exportType, File file, boolean noexportheaders) throws FileNotFoundException, PrismException
 	{
-		exportStateRewardsToFile(exportType, file, DEFAULT_EXPORT_MODEL_PRECISION);
+		exportStateRewardsToFile(exportType, file,noexportheaders, DEFAULT_EXPORT_MODEL_PRECISION);
 	}
 
 
-	String exportStateRewardsToFile(int exportType, File file, int precision) throws FileNotFoundException, PrismException;
+	String exportStateRewardsToFile(int exportType, File file, boolean noexportheaders, int precision) throws FileNotFoundException, PrismException;
 
 	default void exportTransRewardsToFile(int exportType, boolean ordered, File file) throws FileNotFoundException, PrismException
 	{
