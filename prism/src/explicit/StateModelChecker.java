@@ -1442,7 +1442,7 @@ public class StateModelChecker extends PrismComponent
 	 * (Actually, it returns a map from label name Strings to BitSets.)
 	 * (Note: the size of the BitSet may be smaller than the number of states.) 
 	 */
-	public Map<String, BitSet> loadLabelsFile(String filename) throws PrismException
+	public static Map<String, BitSet> loadLabelsFile(String filename) throws PrismException
 	{
 		BufferedReader in;
 		ArrayList<String> labels;

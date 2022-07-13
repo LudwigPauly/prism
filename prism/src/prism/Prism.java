@@ -26,6 +26,7 @@
 
 package prism;
 
+import explicit.*;
 import explicit.rewards.Rewards;
 import hybrid.PrismHybrid;
 
@@ -39,13 +40,6 @@ import java.util.List;
 
 import common.StopWatch;
 import dv.DoubleVector;
-import explicit.CTMC;
-import explicit.CTMCModelChecker;
-import explicit.ConstructModel;
-import explicit.DTMC;
-import explicit.DTMCModelChecker;
-import explicit.FastAdaptiveUniformisation;
-import explicit.FastAdaptiveUniformisationModelChecker;
 import jdd.JDD;
 import jdd.JDDNode;
 import jdd.JDDVars;
@@ -1852,6 +1846,7 @@ public class Prism extends PrismComponent implements PrismSettingsListener
 		// Construct ModulesFile
 		ExplicitFiles2ModulesFile ef2mf = new ExplicitFiles2ModulesFile(this);
 		currentModulesFile = ef2mf.buildModulesFile(statesFile, transFile, typeOverride);
+
 		// Store explicit files info for later
 		explicitFilesStatesFile = statesFile;
 		explicitFilesTransFile = transFile;
@@ -2033,7 +2028,11 @@ public class Prism extends PrismComponent implements PrismSettingsListener
 					currentModel = expf2mtbdd.build(explicitFilesStatesFile, explicitFilesTransFile, explicitFilesLabelsFile, currentModulesFile,
 							explicitFilesNumStates);
 				} else {
-					throw new PrismNotSupportedException("Explicit import not yet supported for explicit engine");
+					currentModelExpl = new ExplicitFiles2Model(this).build(explicitFilesStatesFile, explicitFilesTransFile, explicitFilesLabelsFile, currentModulesFile, explicitFilesNumStates);
+
+
+
+					//throw new PrismNotSupportedException("Explicit import not yet supported for explicit engine");
 				}
 				break;
 			default:
