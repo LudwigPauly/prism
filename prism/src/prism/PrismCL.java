@@ -63,6 +63,7 @@ public class PrismCL implements PrismModelListener
 	private boolean importtrans = false;
 	private boolean importstates = false;
 	private boolean importlabels = false;
+	private boolean importstaterewards = false;
 	private boolean importinitdist = false;
 	private boolean steadystate = false;
 	private boolean dotransient = false;
@@ -121,6 +122,7 @@ public class PrismCL implements PrismModelListener
 	private String modelFilename = null;
 	private String importStatesFilename = null;
 	private String importLabelsFilename = null;
+	private List<String> importStateRewardsFilename = new ArrayList();
 	private String importInitDistFilename = null;
 	private String propertiesFilename = null;
 	private String exportTransFilename = null;
@@ -560,6 +562,7 @@ public class PrismCL implements PrismModelListener
 	{
 		int i;
 		File sf = null, lf = null;
+		List<File> srf = new ArrayList();
 
 		// parse model
 
@@ -583,8 +586,16 @@ public class PrismCL implements PrismModelListener
 					mainLog.print(", \"" + importLabelsFilename + "\"");
 					lf = new File(importLabelsFilename);
 				}
+				if (importstaterewards) {
+					for (int k = 0; k < importStateRewardsFilename.size(); k++) {
+						mainLog.print(", \"" + (String) importStateRewardsFilename.get(k) + "\"");
+						srf.add(new File(importStateRewardsFilename.get(k)));
+					}
+				} else {
+					srf.add(null);
+				}
 				mainLog.println("...");
-				modulesFile = prism.loadModelFromExplicitFiles(sf, new File(modelFilename), lf, typeOverride);
+				modulesFile = prism.loadModelFromExplicitFiles(sf, new File(modelFilename), lf,srf, typeOverride);
 			} else {
 				mainLog.print("\nParsing model file \"" + modelFilename + "\"...\n");
 				modulesFile = prism.parseModelFile(new File(modelFilename), typeOverride);
@@ -1270,6 +1281,15 @@ public class PrismCL implements PrismModelListener
 						errorAndExit("No file specified for -" + sw + " switch");
 					}
 				}
+				// import state rewards for explicit model import
+				else if (sw.equals("importstaterewards")) {
+					if (i < args.length - 1) {
+						importstaterewards = true;
+						importStateRewardsFilename.add(args[++i]);
+					} else {
+						errorAndExit("No file specified for -" + sw + " switch");
+					}
+				}
 				// import initial distribution e.g. for transient probability distribution
 				else if (sw.equals("importinitdist")) {
 					if (i < args.length - 1) {
@@ -1840,6 +1860,21 @@ public class PrismCL implements PrismModelListener
 				importStatesFilename = basename + ".sta";
 				importlabels = true;
 				importLabelsFilename = basename + ".lab";
+				if (new File(basename + ".srew").exists()) {
+					importstaterewards = true;
+					importStateRewardsFilename.add(basename + ".srew");
+				} else {
+					int index = 1;
+					while (true) {
+						if (new File(basename + String.valueOf(index) + ".srew").exists()) {
+							importstaterewards = true;
+							importStateRewardsFilename.add(basename + String.valueOf(index) + ".srew");
+							index++;
+						} else {
+							break;
+						}
+					}
+				}
 			} else if (ext.equals("tra")) {
 				importtrans = true;
 				modelFilename = basename + ".tra";
@@ -1852,6 +1887,9 @@ public class PrismCL implements PrismModelListener
 			} else if (ext.equals("lab")) {
 				importlabels = true;
 				importLabelsFilename = basename + ".lab";
+			} else if (ext.equals("srew")) {
+				importstaterewards = true;
+				importStateRewardsFilename.add(basename + ".srew");
 			}
 			// Unknown extension
 			else {

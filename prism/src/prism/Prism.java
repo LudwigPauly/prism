@@ -266,6 +266,8 @@ public class Prism extends PrismComponent implements PrismSettingsListener
 	private ModulesFile currentModulesFile = null;
 	// Model generator (null if none loaded)
 	private ModelGenerator currentModelGenerator = null;
+	// Reward generator (null if none loaded)
+	private RewardGenerator currentRewardGenerator = null;
 	// Constants to be defined for PRISM model
 	private Values currentDefinedMFConstants = null;
 	// Built model storage - symbolic or explicit - at most one is non-null
@@ -278,6 +280,7 @@ public class Prism extends PrismComponent implements PrismSettingsListener
 	private File explicitFilesStatesFile = null;
 	private File explicitFilesTransFile = null;
 	private File explicitFilesLabelsFile = null;
+	private List<File> explicitFilesStateRewardsFile = new ArrayList();
 	private int explicitFilesNumStates = -1;
 
 	// Has the CUDD library been initialised yet?
@@ -1838,7 +1841,7 @@ public class Prism extends PrismComponent implements PrismSettingsListener
 	 * @param labelsFile File containing label definitions (optional, can be null)
 	 * @param typeOverride Type of model to be built (optional, use null if not required)
 	 */
-	public ModulesFile loadModelFromExplicitFiles(File statesFile, File transFile, File labelsFile, ModelType typeOverride) throws PrismException
+	public ModulesFile loadModelFromExplicitFiles(File statesFile, File transFile, File labelsFile, List<File> stateRewardsFiles, ModelType typeOverride) throws PrismException
 	{
 		currentModelSource = ModelSource.EXPLICIT_FILES;
 		// Clear any existing built model(s)
@@ -1852,6 +1855,9 @@ public class Prism extends PrismComponent implements PrismSettingsListener
 		explicitFilesTransFile = transFile;
 		explicitFilesLabelsFile = labelsFile;
 		explicitFilesNumStates = ef2mf.getNumStates();
+		for (int i = 0; i < stateRewardsFiles.size(); i++) {
+			explicitFilesStateRewardsFile.add(stateRewardsFiles.get(i));
+		}
 		// Reset dependent info
 		currentModelType = currentModulesFile == null ? null : currentModulesFile.getModelType();
 		currentDefinedMFConstants = null;
@@ -2029,7 +2035,11 @@ public class Prism extends PrismComponent implements PrismSettingsListener
 							explicitFilesNumStates);
 				} else {
 					currentModelExpl = new ExplicitFiles2Model(this).build(explicitFilesStatesFile, explicitFilesTransFile, explicitFilesLabelsFile, currentModulesFile, explicitFilesNumStates);
-
+					//currentModelGenerator = new ModelModelGenerator(currentModelExpl, currentModelInfo);
+					ExplicitFilesRewardGenerator efrg4e = new ExplicitFilesRewardGenerator4Explicit(this, explicitFilesStateRewardsFile,
+							explicitFilesNumStates);
+					efrg4e.setStatesList(currentModelExpl.getStatesList());
+					currentRewardGenerator = efrg4e;
 
 
 					//throw new PrismNotSupportedException("Explicit import not yet supported for explicit engine");
