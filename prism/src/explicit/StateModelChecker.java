@@ -71,18 +71,7 @@ import parser.type.TypeDouble;
 import parser.type.TypeInt;
 import parser.visitor.ASTTraverseModify;
 import parser.visitor.ReplaceLabels;
-import prism.Filter;
-import prism.ModelInfo;
-import prism.ModelType;
-import prism.Prism;
-import prism.PrismComponent;
-import prism.PrismException;
-import prism.PrismFileLog;
-import prism.PrismLangException;
-import prism.PrismLog;
-import prism.PrismNotSupportedException;
-import prism.PrismSettings;
-import prism.Result;
+import prism.*;
 
 /**
  * Super class for explicit-state model checkers.
@@ -123,6 +112,7 @@ public class StateModelChecker extends PrismComponent
 	// Model info (for reward structures, etc.)
 	protected ModulesFile modulesFile = null;
 	protected ModelInfo modelInfo = null;
+	protected RewardGenerator rewardGen = null;
 
 	// Properties file (for labels, constants, etc.)
 	protected PropertiesFile propertiesFile = null;
@@ -200,7 +190,7 @@ public class StateModelChecker extends PrismComponent
 	 */
 	public void inheritSettings(StateModelChecker other)
 	{
-		setModulesFileAndPropertiesFile(other.modelInfo, other.propertiesFile);
+		setModulesFileAndPropertiesFile(other.modelInfo, other.propertiesFile, other.rewardGen);
 		setLog(other.getLog());
 		setVerbosity(other.getVerbosity());
 		setExportTarget(other.getExportTarget());
@@ -359,13 +349,14 @@ public class StateModelChecker extends PrismComponent
 	 * Set the attached model file (for e.g. reward structures when model checking)
 	 * and the attached properties file (for e.g. constants/labels when model checking)
 	 */
-	public void setModulesFileAndPropertiesFile(ModelInfo modelInfo, PropertiesFile propertiesFile)
+	public void setModulesFileAndPropertiesFile(ModelInfo modelInfo, PropertiesFile propertiesFile, RewardGenerator rewardGen)
 	{
 		this.modelInfo = modelInfo;
 		if (modelInfo instanceof ModulesFile) {
 			this.modulesFile = (ModulesFile) modelInfo;
 		}
 		this.propertiesFile = propertiesFile;
+		this.rewardGen = rewardGen;
 		// Get combined constant values from model/properties
 		constantValues = new Values();
 		if (modelInfo != null)

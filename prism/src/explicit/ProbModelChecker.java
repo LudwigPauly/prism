@@ -949,7 +949,17 @@ public class ProbModelChecker extends NonProbModelChecker
 		return rewards;
 	}
 
-	public void exportStateRewardsToFileExpl(Model model, RewardStruct rewardStruct,String filename,int exportType, boolean noexportheaders, int precision) throws PrismException{
+	protected Rewards constructRewards(Model model, int r, boolean allowNegativeRewards) throws PrismException
+	{
+		ConstructRewards constructRewards = new ConstructRewards(mainLog);
+		if (allowNegativeRewards)
+			constructRewards.allowNegativeRewards();
+		return constructRewards.buildRewardStructure(model, rewardGen, r);
+
+	}
+
+
+	public void exportStateRewardsToFileExpl(Model model, int r,  RewardStruct rewardStruct,String filename,int exportType, boolean noexportheaders, int precision) throws PrismException{
 
 		int numStates = model.getNumStates();
 		int nonZeroRews = 0;
@@ -968,7 +978,11 @@ public class ProbModelChecker extends NonProbModelChecker
 		}
 
 		try{
-			modelRewards = constructRewards(model, rewardStruct, true);
+			if (rewardGen == null) {
+				modelRewards = constructRewards(model, rewardStruct, true);
+			} else {
+				modelRewards = constructRewards(model, r, true);
+			}
 		} catch (PrismException e) {
 			if(e.getMessage()=="Explicit engine does not yet handle transition rewards for D/CTMCs"){
 				//
@@ -994,9 +1008,14 @@ public class ProbModelChecker extends NonProbModelChecker
 				}
 			}
 			if(!noexportheaders){
-				String rewardStructName = rewardStruct.getName();
+				String rewardStructName;
+				if (rewardGen == null) {
+					rewardStructName = rewardStruct.getName();
+				} else {
+					rewardStructName = rewardGen.getRewardStructName(r);
+				}
 				if(rewardStructName!=null){
-					out.println("# Reward Structure: \"" + rewardStructName + "\"");
+					out.println("# Reward structure: \"" + rewardStructName + "\"");
 				}
 				out.println("# State rewards");
 			}
@@ -1019,9 +1038,14 @@ public class ProbModelChecker extends NonProbModelChecker
 				}
 			}
 			if(!noexportheaders){
-				String rewardStructName = rewardStruct.getName();
+				String rewardStructName;
+				if (rewardGen == null) {
+					rewardStructName = rewardStruct.getName();
+				} else {
+					rewardStructName = rewardGen.getRewardStructName(r);
+				}
 				if(rewardStructName!=null){
-					out.println("# Reward Structure: \"" + rewardStructName + "\"");
+					out.println("# Reward structure: \"" + rewardStructName + "\"");
 				}
 				out.println("# State rewards");
 			}

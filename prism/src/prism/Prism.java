@@ -55,12 +55,7 @@ import parser.ExplicitFiles2ModulesFile;
 import parser.PrismParser;
 import parser.State;
 import parser.Values;
-import parser.ast.Expression;
-import parser.ast.ForLoop;
-import parser.ast.LabelList;
-import parser.ast.ModulesFile;
-import parser.ast.PropertiesFile;
-import parser.ast.Property;
+import parser.ast.*;
 import parser.visitor.Reorder;
 import pta.DigitalClocks;
 import pta.PTAModelChecker;
@@ -2041,7 +2036,13 @@ public class Prism extends PrismComponent implements PrismSettingsListener
 					efrg4e.setStatesList(currentModelExpl.getStatesList());
 					currentRewardGenerator = efrg4e;
 
-
+					/*
+					for (int i = 0; i < efrg4e.getNumRewardStructs(); i++){
+						efrg4e.getStateReward(i,1);
+						RewardStruct rewardStruct = new RewardStruct();
+						currentModulesFile.setRewardStruct(efrg4e.getRewardStruct(i));
+					}
+*/
 					//throw new PrismNotSupportedException("Explicit import not yet supported for explicit engine");
 				}
 				break;
@@ -2509,7 +2510,12 @@ public class Prism extends PrismComponent implements PrismSettingsListener
 			buildModelIfRequired();
 
 			explicit.StateModelChecker mcExpl = createModelCheckerExplicit(null);
-			int numRewardStructs = currentModulesFile.getNumRewardStructs();
+			int numRewardStructs;
+			if(currentRewardGenerator==null){
+				 numRewardStructs = currentModulesFile.getNumRewardStructs();
+			} else {
+				 numRewardStructs = currentRewardGenerator.getNumRewardStructs();
+			}
 			//((explicit.ProbModelChecker) mcExpl).exportStateRewardsToFileExpl(currentModelExpl,currentModulesFile.getRewardStruct(1),file,exportType);
 			if (numRewardStructs == 0)
 				throw new PrismException("There are no state rewards to export");
@@ -2523,7 +2529,7 @@ public class Prism extends PrismComponent implements PrismSettingsListener
 					allFilenames += ((i > 0) ? ", " : "") + filename;
 				}
 				try {
-					((explicit.ProbModelChecker) mcExpl).exportStateRewardsToFileExpl(currentModelExpl,currentModulesFile.getRewardStruct(i),filename,exportType,noexportheaders,precision);
+					((explicit.ProbModelChecker) mcExpl).exportStateRewardsToFileExpl(currentModelExpl,i,currentModulesFile.getRewardStruct(i),filename,exportType,noexportheaders,precision);
 				} catch (PrismException e) {
 					mainLog.println("Export of RewardStructure " + i + " failed!" );
 				}
@@ -3913,9 +3919,9 @@ public class Prism extends PrismComponent implements PrismSettingsListener
 		// Create model checker
 		explicit.StateModelChecker mc = explicit.StateModelChecker.createModelChecker(currentModelType, this);
 		if (currentModulesFile != null) {
-			mc.setModulesFileAndPropertiesFile(currentModulesFile, propertiesFile);
+			mc.setModulesFileAndPropertiesFile(currentModulesFile, propertiesFile, currentRewardGenerator);
 		} else {
-			mc.setModulesFileAndPropertiesFile(currentModelGenerator, propertiesFile);
+			mc.setModulesFileAndPropertiesFile(currentModelGenerator, propertiesFile, currentRewardGenerator);
 		}
 		// Pass any additional local settings
 		mc.setExportTarget(exportTarget);
