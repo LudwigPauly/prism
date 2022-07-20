@@ -102,6 +102,8 @@ public class ExplicitFiles2MTBDD
 
 	private int maxNumChoices = 0;
 
+	protected ExplicitFilesRewardGenerator4MTBDD efrg4m; // reward generator
+
 	public ExplicitFiles2MTBDD(Prism prism)
 	{
 		this.prism = prism;
@@ -113,7 +115,8 @@ public class ExplicitFiles2MTBDD
 	 * Variable info and model type is taken from {@code modulesFile}.
 	 * The number of states should also be passed in as {@code numStates}.
 	 */
-	public Model build(File statesFile, File transFile, File labelsFile, ModulesFile modulesFile, int numStates) throws PrismException
+	public Model build(File statesFile, File transFile, File labelsFile, ModulesFile modulesFile, int numStates,
+			ExplicitFilesRewardGenerator4MTBDD efrg4m) throws PrismException
 	{
 		this.statesFile = statesFile;
 		this.transFile = transFile;
@@ -124,6 +127,8 @@ public class ExplicitFiles2MTBDD
 		numVars = varList.getNumVars();
 		this.numStates = numStates;
 		modelVariables = new ModelVariablesDD();
+
+		this.efrg4m = efrg4m;
 		
 		// Build states list, if info is available
 		if (statesFile != null) {

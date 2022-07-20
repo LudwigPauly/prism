@@ -2026,19 +2026,24 @@ public class Prism extends PrismComponent implements PrismSettingsListener
 			case EXPLICIT_FILES:
 				if (!getExplicit()) {
 					expf2mtbdd = new ExplicitFiles2MTBDD(this);
-					currentModel = expf2mtbdd.build(explicitFilesStatesFile, explicitFilesTransFile, explicitFilesLabelsFile, currentModulesFile,
-							explicitFilesNumStates);
 					ExplicitFilesRewardGenerator erfg4m = new ExplicitFilesRewardGenerator4MTBDD(this, explicitFilesStateRewardsFile,
 							explicitFilesNumStates);
 					currentRewardGenerator = erfg4m;
+					currentModel = expf2mtbdd.build(explicitFilesStatesFile, explicitFilesTransFile, explicitFilesLabelsFile, currentModulesFile,
+							explicitFilesNumStates, (ExplicitFilesRewardGenerator4MTBDD) erfg4m);
 
 				} else {
 					currentModelExpl = new ExplicitFiles2Model(this).build(explicitFilesStatesFile, explicitFilesTransFile, explicitFilesLabelsFile, currentModulesFile, explicitFilesNumStates);
+
 					//currentModelGenerator = new ModelModelGenerator(currentModelExpl, currentModelInfo);
 					ExplicitFilesRewardGenerator efrg4e = new ExplicitFilesRewardGenerator4Explicit(this, explicitFilesStateRewardsFile,
 							explicitFilesNumStates);
 					efrg4e.setStatesList(currentModelExpl.getStatesList());
 					currentRewardGenerator = efrg4e;
+					for(int i = 0; i < efrg4e.getNumRewardStructs();i++){
+						currentModulesFile.setRewardStruct(null);
+					}
+
 
 					/*
 					for (int i = 0; i < efrg4e.getNumRewardStructs(); i++){

@@ -898,8 +898,15 @@ public class ProbModelChecker extends NonProbModelChecker
 		// Build rewards
 		RewardStruct rewStruct = expr.getRewardStructByIndexObject(modelInfo, constantValues);
 		mainLog.println("Building reward structure...");
-		Rewards rewards = constructRewards(model, rewStruct, false);  // false = don't allow negative rewards
 
+		Rewards rewards;
+
+		if (rewardGen == null) {
+			rewards = constructRewards(model, rewStruct, true); // false = don't allow negative rewards
+		} else {
+			int r = expr.getRewardStructIndex()==null? 0 : (int) expr.getRewardStructIndex();
+			rewards = constructRewards(model, r, true);
+		}
 		// Compute rewards
 		StateValues rews = checkRewardFormula(model, rewards, expr.getExpression(), minMax, statesOfInterest);
 
