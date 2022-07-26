@@ -2346,6 +2346,8 @@ public class DTMCModelChecker extends ProbModelChecker implements MCModelChecker
 		// Store num states
 		int numStates = dtmc.getNumStates();
 
+		// TODO: Cache Usage?
+
 		// Compute bottom strongly connected components (BSCCs)
 		SCCConsumerStore sccStore = new SCCConsumerStore();
 		SCCComputer sccComputer = SCCComputer.createSCCComputer(this, dtmc, sccStore);

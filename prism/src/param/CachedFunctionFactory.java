@@ -189,7 +189,6 @@ final class CachedFunctionFactory extends FunctionFactory {
 	private Function getFunctionFromCache(Function cached)
 	{
 		return functions.get(((CachedFunction) cached).getNumber());
-
 	}
 	
 	Function add(Function cached1, Function cached2)

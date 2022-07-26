@@ -54,12 +54,19 @@
 
 package param;
 
+import java.math.BigInteger;
+import java.util.BitSet;
+import java.util.List;
+import java.util.ArrayList;
+import java.util.Map;
+import java.util.Iterator;
+import java.util.PrimitiveIterator;
 import java.io.File;
-import java.util.*;
 
 import common.IterableBitSet;
 import common.StopWatch;
 import common.iterable.FunctionalIterable;
+import common.iterable.FunctionalPrimitiveIterator;
 import explicit.DTMC;
 import explicit.SCCConsumerStore;
 import explicit.Utils;
@@ -67,8 +74,32 @@ import param.Lumper.BisimType;
 import param.StateEliminator.EliminationOrder;
 import parser.State;
 import parser.Values;
-import parser.ast.*;
+import parser.ast.Expression;
+import parser.ast.ExpressionBinaryOp;
+import parser.ast.ExpressionConstant;
+import parser.ast.ExpressionExists;
+import parser.ast.ExpressionFilter;
 import parser.ast.ExpressionFilter.FilterOperator;
+import parser.ast.ExpressionForAll;
+import parser.ast.ExpressionFormula;
+import parser.ast.ExpressionFunc;
+import parser.ast.ExpressionITE;
+import parser.ast.ExpressionLabel;
+import parser.ast.ExpressionLiteral;
+import parser.ast.ExpressionProb;
+import parser.ast.ExpressionProp;
+import parser.ast.ExpressionReward;
+import parser.ast.ExpressionSS;
+import parser.ast.ExpressionTemporal;
+import parser.ast.ExpressionUnaryOp;
+import parser.ast.ExpressionLongRun;
+import parser.ast.ExpressionVar;
+import parser.ast.LabelList;
+import parser.ast.ModulesFile;
+import parser.ast.PropertiesFile;
+import parser.ast.Property;
+import parser.ast.RelOp;
+import parser.ast.RewardStruct;
 import parser.type.TypeBool;
 import parser.type.TypeDouble;
 import parser.type.TypeInt;
@@ -383,11 +414,15 @@ final public class ParamModelChecker extends PrismComponent
 			res = checkExpressionProb(model, (ExpressionProb) expr, needStates);
 		} else if (expr instanceof ExpressionReward) {
 			res = checkExpressionReward(model, (ExpressionReward) expr, needStates);
+		}
+		// L operator
+		else if (expr instanceof ExpressionLongRun) {
+				res = checkExpressionLongRun(model, (ExpressionLongRun) expr, needStates);
 		} else if (expr instanceof ExpressionSS) {
 			res = checkExpressionSteadyState(model, (ExpressionSS) expr, needStates);
 		} else if (expr instanceof ExpressionForAll || expr instanceof ExpressionExists) {
 			throw new PrismNotSupportedException("Non-probabilistic CTL model checking is currently not supported in the " + mode.engine());
-		} else if (expr instanceof ExpressionFunc && ((ExpressionFunc)expr).getNameCode() == ExpressionFunc.MULTI) {
+		} else if (expr instanceof ExpressionFunc && ((ExpressionFunc) expr).getNameCode() == ExpressionFunc.MULTI) {
 			throw new PrismNotSupportedException("Multi-objective model checking is not supported in the " + mode.engine());
 		} else {
 			res = checkExpressionAtomic(model, expr, needStates);
@@ -408,6 +443,7 @@ final public class ParamModelChecker extends PrismComponent
 		}
 		for (int state = 0; state < numStates; state++) {
 			Expression exprVar = (Expression) expr.deepCopy().evaluatePartially(statesList.get(state), varMap);
+
 			if (needStates.get(state)) {
 				if (exprVar instanceof ExpressionLiteral) {
 					ExpressionLiteral exprLit = (ExpressionLiteral) exprVar;
@@ -473,6 +509,24 @@ final public class ParamModelChecker extends PrismComponent
 		return resI.ITE(resT, resE);
 	}
 
+	/**
+	 * Model check a variable reference.
+	 * @param statesOfInterest the states of interest, see checkExpression()
+	 */
+
+	protected RegionValues checkExpressionVar(Model model, ExpressionVar expr, BitSet statesOfInterest) throws PrismException
+	{
+		// TODO (JK): optimize evaluation using statesOfInterest
+		List<State> statesList = model.getStatesList();
+
+		StateValues stateValues = new StateValues(model.getNumStates(),model.getFirstInitialState());
+		for(int i = 0; i < model.getNumStates(); i++){
+			Object object = expr.evaluate(statesList.get(i));
+
+			stateValues.setStateValue(i,functionFactory.fromBigRational(new BigRational((int) object)));
+		}
+		return regionFactory.completeCover(stateValues);
+	}
 	/**
 	 * Model check a label.
 	 */
@@ -1210,6 +1264,121 @@ final public class ParamModelChecker extends PrismComponent
 		return valueComputer.computeSteadyState(b, min, null);
 	}
 
+	// LongRun:
+
+	public RegionValues checkExpressionLongRun(ParamModel model, ExpressionLongRun expr, BitSet statesOfInterest) throws PrismException
+	{
+		if (model.getModelType() != ModelType.DTMC && model.getModelType() != ModelType.CTMC) {
+			throw new PrismNotSupportedException("Parametric engine does not yet handle the L operator for " + model.getModelType() + "s");
+		}
+
+		BitSet bitSet = new BitSet();
+		bitSet.set(0,model.getNumStates());
+		StateValues stateValues = checkExpression(model, expr.getStates(),bitSet).getResult(0);
+		BitSet states = stateValues.toBitSet();
+		assert states != null : "Booolean result expected.";
+
+		StateValues values = checkExpression(model, expr.getExpression(), states).getStateValues();
+		assert !values.isTypeBool() : "Non-Boolean values expected.";
+
+		return computeLongRun(model, values, states, statesOfInterest);
+
+	}
+
+	// FIXME ALG: check types
+	protected RegionValues computeLongRun(ParamModel model, StateValues values, BitSet states, BitSet statesOfInterest)
+			throws PrismException
+	{
+		functionFactory = model.getFunctionFactory();
+		// Store num states, fix statesOfInterest
+		int numStates = model.getNumStates();
+		if (statesOfInterest == null) {
+			statesOfInterest = new BitSet(numStates);
+			statesOfInterest.flip(0, numStates);
+		}
+
+		// 1. compute steady-state probabilities or fetch from cache
+		SteadyStateProbs.SteadyStateProbsParam steadyStateProbsBscc;
+
+		if (SteadyStateCache.getInstance().isEnabled()) {
+			SteadyStateCache cache = SteadyStateCache.getInstance();
+			if (cache.containsSteadyStateProbs(model)) {
+				mainLog.println("\nTaking steady-state probabilities from cache.");
+				steadyStateProbsBscc = cache.getSteadyStateProbs(model);
+			} else {
+				mainLog.println("\nComputing steady-state probabilities.");
+				steadyStateProbsBscc = SteadyStateProbs.computeCompactParam(this, model);
+				mainLog.println("\nCaching steady-state probabilities.");
+				cache.storeSteadyStateProbs(model, steadyStateProbsBscc, settings);
+			}
+		} else {
+			steadyStateProbsBscc = SteadyStateProbs.computeSimpleParam(this, model);
+		}
+		BitSet nonBsccStates = steadyStateProbsBscc.getNonBsccStates();
+
+		Function [] bsccProbs = ((CachedFunctionFactory)functionFactory).checkUniqueArray(steadyStateProbsBscc.getSteadyStateProbabilities());
+
+		StateValues steadyStateProbs = StateValues.createFromFunctionArray(bsccProbs,model);
+
+
+		// 2. compute weighted sums for each state-of-interest
+		Function[] numerator   = functionFactory.createFunctionArray(numStates,functionFactory.getZero());
+		Function[] denominator = functionFactory.createFunctionArray(numStates,functionFactory.getZero());
+
+		// weightedValues = values x steady (filter by states)
+		StateValues weightedValues = values;
+		weightedValues.<Function,Function,Function>applyFunction(steadyStateProbs,(Function v1,Function v2) -> v1.multiply(v2), states);
+		// skip reach computation if each state-of-interest is in a bscc
+		boolean computeReachProbs = statesOfInterest.intersects(nonBsccStates);
+		for (BitSet bscc : steadyStateProbsBscc.getBSCCs()) {
+			// compute intersection of states and current BSCC
+			BitSet statesInBscc = (BitSet) bscc.clone();
+			statesInBscc.and(states);
+			if (statesInBscc.isEmpty()) {
+				// no state in current BSCC, skip BSCC
+				continue;
+			}
+			// compute probability to reach BSCC
+			Function[] reachProbs = new Function[numStates];
+			if (computeReachProbs) {
+				// if some state-of-interest is not in a BSCC:
+				reachProbs = computeUntilProbs(model,nonBsccStates, bscc, statesOfInterest);
+			} else {
+				// each state-of-interest is in a BSCC
+				BitSet probs = (BitSet) bscc.clone();
+				probs.and(statesOfInterest);
+				for (int i = 0; i< numStates;i++){
+					reachProbs[i] = (probs.get(i) ? functionFactory.getOne() : functionFactory.getZero());
+				}
+			}
+			// compute weighted sum
+			Function sumWeight = weightedValues.sumOverBitSet(statesInBscc);
+			Function sumSteady = steadyStateProbs.sumOverBitSet(statesInBscc);
+			for (FunctionalPrimitiveIterator.OfInt iter = new IterableBitSet(statesOfInterest).iterator(); iter.hasNext();) {
+				int state = iter.nextInt();
+				numerator[state] = numerator[state].add(reachProbs[state].multiply(sumWeight));
+				denominator[state] = denominator[state].add(reachProbs[state].multiply(sumSteady));
+			}
+			// remove visited bscc states
+			states.andNot(bscc);
+			if (states.isEmpty()) {
+				// no states left, skip remaining BSCCs
+				break;
+			}
+		}
+
+		// 3. compute final quotient
+		Function[] quotient = numerator;
+		for (FunctionalPrimitiveIterator.OfInt iter = new IterableBitSet(statesOfInterest).iterator(); iter.hasNext();) {
+			int state = iter.nextInt();
+			quotient[state] = quotient[state].divide(denominator[state]);
+		}
+
+
+		return regionFactory.completeCover(StateValues.createFromFunctionArray(quotient, model));
+	}
+
+
 	/**
 	 * Set parameters for parametric analysis.
 	 * 
@@ -1334,6 +1503,7 @@ final public class ParamModelChecker extends PrismComponent
 	 */
 	public StateValues computeSteadyStateProbs(ParamModel model, double initDist[]) throws PrismException
 	{
+
 		int numStates = model.getNumStates();
 
 
@@ -1367,6 +1537,8 @@ final public class ParamModelChecker extends PrismComponent
 		}
 		BitSet notInBSCCs = steadyStateProbsBscc.getNonBsccStates();
 		int numBSCCs = bsccs.size();
+
+
 
 		// Compute support of initial distribution
 		int numInit = 0;
@@ -1564,6 +1736,11 @@ final public class ParamModelChecker extends PrismComponent
 
 		return result;
 	}
+	public Function[] computeUntilProbs(ParamModel model, BitSet remain, BitSet target, BitSet statesOfInterest) throws PrismException
+	{
+		return computeUntilProbs(model,remain,target);
+	}
+
 
 	/**
 	 * Compute reachability/until probabilities.
