@@ -862,6 +862,7 @@ public class CTMCModelChecker extends ProbModelChecker implements MCModelChecker
 		return createDTMCModelChecker().computeSteadyStateProbs(dtmcEmb, initDist, new SteadyStateBSCCPostProcessor(ctmc));
 	}
 
+	// TODO
 	/**
 	 * @see DTMCModelChecker#computeSteadyStateProbsForBSCC}
 	 */

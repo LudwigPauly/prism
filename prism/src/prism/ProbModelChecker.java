@@ -488,6 +488,8 @@ public class ProbModelChecker extends NonProbModelChecker
 	 */
 	protected StateValues checkExpressionSteadyState(ExpressionSS expr, JDDNode statesOfInterest) throws PrismException
 	{
+		// TODO: Cache Usage?
+
 		// BSCC stuff
 		List<JDDNode> bsccs = null;
 		JDDNode notInBSCCs = null;
@@ -1297,6 +1299,8 @@ public class ProbModelChecker extends NonProbModelChecker
 
 			// get bscc
 			bscc = vectBSCCs.get(i);
+
+			// TODO: Cache Usage?
 
 			// compute steady state probabilities
 			try {

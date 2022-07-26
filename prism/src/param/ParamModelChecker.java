@@ -65,6 +65,7 @@ import java.io.File;
 
 import common.IterableBitSet;
 import common.StopWatch;
+import common.iterable.FunctionalPrimitiveIterator;
 import explicit.SCCConsumerStore;
 import explicit.Utils;
 import param.Lumper.BisimType;
@@ -89,6 +90,7 @@ import parser.ast.ExpressionReward;
 import parser.ast.ExpressionSS;
 import parser.ast.ExpressionTemporal;
 import parser.ast.ExpressionUnaryOp;
+import parser.ast.ExpressionLongRun;
 import parser.ast.LabelList;
 import parser.ast.ModulesFile;
 import parser.ast.PropertiesFile;
@@ -106,6 +108,7 @@ import prism.PrismException;
 import prism.PrismSettings;
 import prism.PrismNotSupportedException;
 import prism.Result;
+import prism.SteadyStateProbs;
 import edu.jas.kern.ComputerThreads;
 import explicit.Model;
 
@@ -408,6 +411,10 @@ final public class ParamModelChecker extends PrismComponent
 			res = checkExpressionProb(model, (ExpressionProb) expr, needStates);
 		} else if (expr instanceof ExpressionReward) {
 			res = checkExpressionReward(model, (ExpressionReward) expr, needStates);
+		}
+		// L operator
+		else if (expr instanceof ExpressionLongRun) {
+				res = checkExpressionLongRun(model, (ExpressionLongRun) expr, needStates);
 		} else if (expr instanceof ExpressionSS) {
 			res = checkExpressionSteadyState(model, (ExpressionSS) expr, needStates);
 		} else if (expr instanceof ExpressionForAll || expr instanceof ExpressionExists) {
@@ -1235,6 +1242,107 @@ final public class ParamModelChecker extends PrismComponent
 		return valueComputer.computeSteadyState(b, min, null);
 	}
 
+	// LongRun:
+
+	public RegionValues checkExpressionLongRun(ParamModel model, ExpressionLongRun expr, BitSet statesOfInterest) throws PrismException
+	{
+		if (model.getModelType() != ModelType.DTMC && model.getModelType() != ModelType.CTMC) {
+			throw new PrismNotSupportedException("Parametric engine does not yet handle the L operator for " + model.getModelType() + "s");
+		}
+
+		BitSet bitSet = new BitSet();
+		bitSet.set(0,model.getNumStates());
+		StateValues stateValues = checkExpression(model, expr.getStates(),bitSet).getResult(0);
+		BitSet states = stateValues.toBitSet();
+		assert states != null : "Booolean result expected.";
+
+		StateValues values = checkExpression(model, expr.getExpression(), states).getStateValues();
+		assert !values.isTypeBool() : "Non-Boolean values expected.";
+
+		return computeLongRun(model, values, states, statesOfInterest);
+
+	}
+
+	// FIXME ALG: check types
+	protected RegionValues computeLongRun(ParamModel model, StateValues values, BitSet states, BitSet statesOfInterest)
+			throws PrismException
+	{
+		functionFactory = model.getFunctionFactory();
+		// Store num states, fix statesOfInterest
+		int numStates = model.getNumStates();
+		if (statesOfInterest == null) {
+			statesOfInterest = new BitSet(numStates);
+			statesOfInterest.flip(0, numStates);
+		}
+
+		// 1. compute steady-state probabilities or fetch from cache
+		SteadyStateProbs.SteadyStateProbsParam steadyStateProbsBscc = SteadyStateProbs.computeSimpleParam(this, model);
+
+		BitSet nonBsccStates = steadyStateProbsBscc.getNonBsccStates();
+
+		StateValues steadyStateProbs = StateValues.createFromFunctionArray(steadyStateProbsBscc.getSteadyStateProbabilities(),model);
+
+
+		// 2. compute weighted sums for each state-of-interest
+		Function[] numerator   = functionFactory.createFunctionArray(numStates,functionFactory.getZero());
+		Function[] denominator = functionFactory.createFunctionArray(numStates,functionFactory.getZero());
+
+		// weightedValues = values x steady (filter by states)
+		StateValues weightedValues = values;
+		weightedValues.<Function,Function,Function>applyFunction(steadyStateProbs,(Function v1,Function v2) -> v1.multiply(v2), states);
+		// skip reach computation if each state-of-interest is in a bscc
+		boolean computeReachProbs = statesOfInterest.intersects(nonBsccStates);
+		for (BitSet bscc : steadyStateProbsBscc.getBSCCs()) {
+			// compute intersection of states and current BSCC
+			BitSet statesInBscc = (BitSet) bscc.clone();
+			statesInBscc.and(states);
+			if (statesInBscc.isEmpty()) {
+				// no state in current BSCC, skip BSCC
+				continue;
+			}
+			// compute probability to reach BSCC
+			Function[] reachProbs = new Function[numStates];
+			if (computeReachProbs) {
+				// if some state-of-interest is not in a BSCC:
+				reachProbs = computeUntilProbs(model,nonBsccStates, bscc, statesOfInterest);
+			} else {
+				// each state-of-interest is in a BSCC
+				BitSet probs = (BitSet) bscc.clone();
+				probs.and(statesOfInterest);
+				for (int i = 0; i< numStates;i++){
+					reachProbs[i] = (probs.get(i) ? functionFactory.getOne() : functionFactory.getZero());
+				}
+			}
+
+
+			// compute weighted sum
+			Function sumWeight = weightedValues.sumOverBitSet(statesInBscc);
+			Function sumSteady = steadyStateProbs.sumOverBitSet(statesInBscc);
+			for (FunctionalPrimitiveIterator.OfInt iter = new IterableBitSet(statesOfInterest).iterator(); iter.hasNext();) {
+				int state = iter.nextInt();
+				numerator[state] = numerator[state].add(reachProbs[state].multiply(sumWeight));
+				denominator[state] = denominator[state].add(reachProbs[state].multiply(sumSteady));
+			}
+			// remove visited bscc states
+			states.andNot(bscc);
+			if (states.isEmpty()) {
+				// no states left, skip remaining BSCCs
+				break;
+			}
+		}
+
+		// 3. compute final quotient
+		Function[] quotient = numerator;
+		for (FunctionalPrimitiveIterator.OfInt iter = new IterableBitSet(statesOfInterest).iterator(); iter.hasNext();) {
+			int state = iter.nextInt();
+			quotient[state] = quotient[state].divide(denominator[state]);
+		}
+
+
+		return regionFactory.completeCover(StateValues.createFromFunctionArray(quotient, model));
+	}
+
+
 	/**
 	 * Set parameters for parametric analysis.
 	 * 
@@ -1566,6 +1674,11 @@ final public class ParamModelChecker extends PrismComponent
 
 		return result;
 	}
+	public Function[] computeUntilProbs(ParamModel model, BitSet remain, BitSet target, BitSet statesOfInterest) throws PrismException
+	{
+		return computeUntilProbs(model,remain,target);
+	}
+
 
 	/**
 	 * Compute reachability/until probabilities.
