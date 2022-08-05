@@ -35,6 +35,7 @@ import java.util.List;
 import java.util.function.IntPredicate;
 
 import common.IterableStateSet;
+import common.iterable.Reducible;
 import parser.State;
 import parser.type.Type;
 import parser.type.TypeBool;
@@ -350,4 +351,15 @@ public final class StateValues
 			return;
 		}
 	}
+
+	public Boolean isTypeBool()
+	{
+		return Reducible.extend(values).allMatch(v -> v instanceof StateBoolean);
+	}
+
+	public Boolean isTypeFunction()
+	{
+		return Reducible.extend(values).allMatch(v -> v instanceof Function);
+	}
+
 }
