@@ -1,0 +1,10 @@
+-ex
+-gs -ex 
+-gs -ex -cachesteadystates
+-gs -ex -nocachesteadystates
+-gs -hybrid
+-jor -mtbdd
+-gs -hybrid -cachesteadystates
+-jor -mtbdd -cachesteadystates
+-gs -hybrid -nocachesteadystates
+-jor -mtbdd -nocachesteadystates
