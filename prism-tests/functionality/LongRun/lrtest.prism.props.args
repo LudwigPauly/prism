@@ -1,0 +1,4 @@
+-ex
+-gs -ex 
+-gs -ex -cachesteadystates
+-gs -ex -nocachesteadystates
