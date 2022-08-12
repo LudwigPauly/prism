@@ -153,6 +153,24 @@ public final class StateValues
 		}
 	}
 
+	public Function sumOverBitSet(BitSet filter) throws PrismException
+	{
+		if (isTypeBool()) throw new PrismException("Can't take sum over a vector of type bool");
+
+		StateValue first = Reducible.extend(values).detect((v) -> v!=null);
+
+		FunctionFactory factory = ((Function)first).getFactory();
+		Function sum = factory.getZero();
+
+		FunctionalPrimitiveIterator.OfInt states = IterableBitSet.getSetBits(filter).iterator();
+
+		while (states.hasNext()) {
+			int i = states.nextInt();
+			sum = sum.add(getStateValueAsFunction(i));
+		}
+		return sum;
+	}
+
 	@Override
 	public int hashCode()
 	{
