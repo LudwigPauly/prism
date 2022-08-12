@@ -14,7 +14,6 @@ import explicit.*;
 import explicit.SCCComputer;
 import jdd.JDD;
 import jdd.JDDNode;
-import param.CachedFunction;
 import param.Function;
 import param.ParamModel;
 import param.ParamModelChecker;
@@ -543,7 +542,7 @@ public interface SteadyStateProbs<S, V>
 		for (int b = 0; b < numBSCCs; b++) {
 			BitSet bscc = bsccs.get(b);
 			// Compute steady-state probabilities for the BSCC
-			CachedFunction[] tmp = mc.computeSteadyStateProbsForBSCC(model, bscc);
+			Function[] tmp = mc.computeSteadyStateProbsForBSCC(model, bscc);
 			int k = 0;
 			for (int i = bscc.nextSetBit(0); i >= 0; i = bscc.nextSetBit(i + 1)) {
 				steadyStateProbs.bsccProbs[i] = tmp[k];

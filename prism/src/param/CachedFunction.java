@@ -32,7 +32,7 @@ package param;
  * @author Ernst Moritz Hahn <emhahn@cs.ox.ac.uk> (University of Oxford)
  * @see CachedFunctionFactory
  */
-final class CachedFunction extends Function {
+public final class CachedFunction extends Function {
 	/** unique number of cached function this function represents */
 	private int number;
 	/** factory this function belongs to */
@@ -66,7 +66,7 @@ final class CachedFunction extends Function {
 	{
 		return factory.getFunction(number).toString();
 	}
-	
+
 	@Override
 	public boolean equals(Object obj) {
 		if (!(obj instanceof CachedFunction)) {

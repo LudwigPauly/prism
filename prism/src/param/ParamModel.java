@@ -662,7 +662,7 @@ public final class ParamModel extends ModelExplicit implements MDPGeneric<Functi
 	 * 
 	 * @return function factory used in this parametric model
 	 */
-	FunctionFactory getFunctionFactory()
+	public FunctionFactory getFunctionFactory()
 	{
 		return functionFactory;
 	}

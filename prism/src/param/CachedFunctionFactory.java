@@ -189,6 +189,7 @@ final class CachedFunctionFactory extends FunctionFactory {
 	private Function getFunctionFromCache(Function cached)
 	{
 		return functions.get(((CachedFunction) cached).getNumber());
+
 	}
 	
 	Function add(Function cached1, Function cached2)
@@ -343,5 +344,47 @@ final class CachedFunctionFactory extends FunctionFactory {
 	@Override
 	public Function getVar(int var) {
 		return makeUnique(context.getVar(var));
+	}
+
+	/**
+	 * Method to check if function allready in the factory or needs to be added
+	 *
+	 * If the function is not represented in this factory it has to be added from the
+	 * factory of the function
+	 *
+	 * @param function CashedFunction that should be checked
+	 * @return function from this factory
+	 */
+	public Function checkUnique(CachedFunction function){
+		if(function == null) {
+			return null;
+		}
+
+		if(this == function.getFactory()){
+			return function;
+		};
+
+		// get CashedFunction function as JASFunction
+		JasFunction functionJAS = (JasFunction) ((CachedFunctionFactory)function.getFactory()).functions.get(function.getNumber());
+
+		// check if function is allready in factory
+		for (int i = 0; i < functions.size();i++) {
+			// check if the value of a function is represented in this factory
+			if (((JasFunction)functions.get(i)).equals(functionJAS)) {
+				//return function contained in the factory
+				return cachedFunctions.get(i);
+			}
+		}
+		// if the function is not represented in the factory it's added
+		// add to this factory JAS version of the function from their factory
+		// return function from this factory
+		return makeUnique(functionJAS);
+	}
+
+	public Function[] checkUniqueArray(Function [] functions){
+		for(int i = 0; i < functions.length; i++){
+			functions[i] = checkUnique((CachedFunction) functions[i]);
+		}
+		return functions;
 	}
 }

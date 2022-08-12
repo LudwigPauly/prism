@@ -59,6 +59,7 @@ import java.util.*;
 
 import common.IterableBitSet;
 import common.StopWatch;
+import common.iterable.FunctionalIterable;
 import explicit.DTMC;
 import explicit.SCCConsumerStore;
 import explicit.Utils;
@@ -79,6 +80,8 @@ import prism.PrismException;
 import prism.PrismSettings;
 import prism.PrismNotSupportedException;
 import prism.Result;
+import prism.SteadyStateProbs;
+import prism.SteadyStateCache;
 import edu.jas.kern.ComputerThreads;
 import explicit.Model;
 
@@ -1338,12 +1341,31 @@ final public class ParamModelChecker extends PrismComponent
 
 		Function[] solnProbs = functionFactory.createFunctionArray(numStates,functionFactory.getZero());
 
-		// Compute BSCCs
-		SCCConsumerStore sccStore = new SCCConsumerStore();
-		explicit.SCCComputer sccComputer = explicit.SCCComputer.createSCCComputer(this, model, sccStore);
-		sccComputer.computeSCCs();
-		List<BitSet> bsccs = sccStore.getBSCCs();
-		BitSet notInBSCCs = sccStore.getNotInBSCCs();
+		// compute steady-state probabilities or fetch from cache
+		SteadyStateProbs.SteadyStateProbsParam steadyStateProbsBscc;
+
+		if (SteadyStateCache.getInstance().isEnabled()) {
+			SteadyStateCache cache = SteadyStateCache.getInstance();
+			if (cache.containsSteadyStateProbs(model)) {
+				mainLog.println("\nTaking steady-state probabilities from cache.");
+				steadyStateProbsBscc = cache.getSteadyStateProbs(model);
+			} else {
+				mainLog.println("\nComputing steady-state probabilities.");
+				steadyStateProbsBscc = SteadyStateProbs.computeCompactParam(this, model);
+				mainLog.println("\nCaching steady-state probabilities.");
+				cache.storeSteadyStateProbs(model, steadyStateProbsBscc, settings);
+			}
+		} else {
+			steadyStateProbsBscc = SteadyStateProbs.computeSimpleParam(this,model);
+		}
+
+		List<BitSet> bsccs = new ArrayList<>();
+
+		// get BSCCs from steadyStateProbsBscc
+		for (BitSet bscc : steadyStateProbsBscc.getBSCCs()){
+			bsccs.add(bscc);
+		}
+		BitSet notInBSCCs = steadyStateProbsBscc.getNonBsccStates();
 		int numBSCCs = bsccs.size();
 
 		// Compute support of initial distribution
@@ -1375,12 +1397,17 @@ final public class ParamModelChecker extends PrismComponent
 			// >> try next BSCC
 		}
 
+		Function[] bsccProbs = steadyStateProbsBscc.getSteadyStateProbabilities();
+
 		// If all initial states are in the same BSCC, it's easy...
-		// Just compute steady-state probabilities for the BSCC
+		// Just return steady-state probabilities for the BSCC
 		if (initInOneBSCC > -1) {
 			mainLog.println("\nInitial states are all in one BSCC (so no reachability probabilities computed)");
 			BitSet bscc = bsccs.get(initInOneBSCC);
-			solnProbs = computeSteadyStateProbsForBSCC(model, bscc);
+
+			for (int i = bscc.nextSetBit(0); i >= 0; i = bscc.nextSetBit(i + 1)) {
+				solnProbs[i] =  ((CachedFunctionFactory) functionFactory).checkUnique((CachedFunction) bsccProbs[i]);
+			}
 		}
 
 		// Otherwise, have to consider all the BSCCs
@@ -1403,29 +1430,23 @@ final public class ParamModelChecker extends PrismComponent
 				mainLog.print("\nProbability of reaching BSCC " + (b + 1) + ": " + probBSCCs[b] + "\n");
 			}
 
-			// Compute steady-state probabilities for each BSCC
+			// Multiply each BSCC probability with reachebility probability
 			for (int b = 0; b < numBSCCs; b++) {
 				mainLog.println("\nComputing steady-state probabilities for BSCC " + (b + 1));
 				BitSet bscc = bsccs.get(b);
-				// Compute steady-state probabilities for the BSCC
-				Function[] bsccProbs = computeSteadyStateProbsForBSCC(model, bscc);
-				// Multiply by BSCC reach prob
-				int k = 0;
 				for (int i = bscc.nextSetBit(0); i >= 0; i = bscc.nextSetBit(i + 1)) {
-					solnProbs[i] = bsccProbs[k];
+					solnProbs[i] = ((CachedFunctionFactory) functionFactory).checkUnique((CachedFunction) bsccProbs[i]);
 					solnProbs[i] = solnProbs[i].multiply(probBSCCs[b]);
-					k++;
 				}
 			}
 		}
 
-		// solnProbs is the result
-		StateValues solnProbs2 = new StateValues(solnProbs.length, model.getFirstInitialState());
+		// solnProbsSV is the result
+		StateValues solnProbsSV = new StateValues(solnProbs.length, model.getFirstInitialState(),functionFactory.getZero());
 		for (int i = 0; i < solnProbs.length; i++) {
-			solnProbs2.setStateValue(i, solnProbs[i]);
+			solnProbsSV.setStateValue(i, solnProbs[i]);
 		}
-
-		return solnProbs2;
+		return solnProbsSV;
 	}
 
 	/**
