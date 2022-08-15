@@ -173,4 +173,18 @@ public abstract class FunctionFactory {
 	public Function fromLong(long from) {
 		return fromBigRational(new BigRational(from));
 	}
+
+	/**
+	 * Returns array of functions
+	 * @param size array size
+	 * @param function value of all array entries
+	 * @return
+	 */
+	public Function [] createFunctionArray(int size, Function function){
+		Function[] functions = new Function[size];
+		for (int i = 0; i < functions.length; i++){
+			functions[i] = function;
+		}
+		return functions;
+	}
 }
