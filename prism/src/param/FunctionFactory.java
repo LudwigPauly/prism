@@ -295,4 +295,18 @@ public abstract class FunctionFactory
 			throw new PrismLangException("Cannot create a function for expression " + expr, expr);
 		}
 	}
+
+	/**
+	 * Returns array of functions
+	 * @param size array size
+	 * @param function value of all array entries
+	 * @return
+	 */
+	public Function [] createFunctionArray(int size, Function function){
+		Function[] functions = new Function[size];
+		for (int i = 0; i < functions.length; i++){
+			functions[i] = function;
+		}
+		return functions;
+	}
 }
