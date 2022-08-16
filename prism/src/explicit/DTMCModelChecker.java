@@ -31,6 +31,7 @@ import java.util.Arrays;
 import java.util.BitSet;
 import java.util.Iterator;
 import java.util.List;
+import java.util.ArrayList;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.PrimitiveIterator;
@@ -41,6 +42,8 @@ import acceptance.AcceptanceType;
 import common.IntSet;
 import common.IterableBitSet;
 import common.StopWatch;
+import common.iterable.FunctionalIterator;
+import common.iterable.FunctionalPrimitiveIterator;
 import explicit.modelviews.DTMCAlteredDistributions;
 import explicit.modelviews.MDPFromDTMC;
 import explicit.rewards.MCRewards;
@@ -58,6 +61,8 @@ import prism.PrismLog;
 import prism.PrismNotSupportedException;
 import prism.PrismSettings;
 import prism.PrismUtils;
+import prism.SteadyStateCache;
+import prism.SteadyStateProbs;
 
 /**
  * Explicit-state model checker for discrete-time Markov chains (DTMCs).
@@ -2174,12 +2179,32 @@ public class DTMCModelChecker extends ProbModelChecker implements MCModelChecker
 		// Create results vector
 		double[] solnProbs = new double[numStates];
 
-		// Compute bottom strongly connected components (BSCCs)
-		SCCConsumerStore sccStore = new SCCConsumerStore();
-		SCCComputer sccComputer = SCCComputer.createSCCComputer(this, dtmc, sccStore);
-		sccComputer.computeSCCs();
-		List<BitSet> bsccs = sccStore.getBSCCs();
-		BitSet notInBSCCs = sccStore.getNotInBSCCs();
+		SteadyStateProbs.SteadyStateProbsExplicit steadyStateProbsBscc;
+
+		if (SteadyStateCache.getInstance().isEnabled()) {
+			SteadyStateCache cache = SteadyStateCache.getInstance();
+			if (cache.containsSteadyStateProbs(dtmc)) {
+				mainLog.println("\nTaking steady-state probabilities from cache.");
+				steadyStateProbsBscc = cache.getSteadyStateProbs(dtmc);
+			} else {
+				mainLog.println("\nComputing steady-state probabilities.");
+				steadyStateProbsBscc = SteadyStateProbs.computeCompact((MCModelChecker<?>) this, dtmc);
+				mainLog.println("\nCaching steady-state probabilities.");
+				cache.storeSteadyStateProbs(dtmc, steadyStateProbsBscc, settings);
+			}
+		} else {
+			steadyStateProbsBscc = SteadyStateProbs.computeSimple((MCModelChecker<?>) this, dtmc);
+		}
+
+		double [] steadyStateProbs = steadyStateProbsBscc.getSteadyStateProbabilities();
+
+		List<BitSet> bsccs = new ArrayList<>();
+
+		for (BitSet bitSet : steadyStateProbsBscc.getBSCCs()){
+			bsccs.add(bitSet);
+		}
+
+		BitSet notInBSCCs = steadyStateProbsBscc.getNonBsccStates();
 		int numBSCCs = bsccs.size();
 
 		// Compute support of initial distribution
@@ -2215,7 +2240,10 @@ public class DTMCModelChecker extends ProbModelChecker implements MCModelChecker
 		if (initInOneBSCC > -1) {
 			mainLog.println("\nInitial states are all in one BSCC (so no reachability probabilities computed)");
 			BitSet bscc = bsccs.get(initInOneBSCC);
-			computeSteadyStateProbsForBSCC(dtmc, bscc, solnProbs, bsccPostProcessor);
+			for (FunctionalPrimitiveIterator.OfInt iter = new IterableBitSet(bscc).iterator(); iter.hasNext();) {
+				int state = iter.nextInt();
+				solnProbs[state] = steadyStateProbs[state];
+			}
 		}
 
 		// Otherwise, have to consider all the BSCCs
@@ -2240,8 +2268,12 @@ public class DTMCModelChecker extends ProbModelChecker implements MCModelChecker
 			for (int b = 0; b < numBSCCs; b++) {
 				mainLog.println("\nComputing steady-state probabilities for BSCC " + (b + 1));
 				BitSet bscc = bsccs.get(b);
-				// Compute steady-state probabilities for the BSCC
-				computeSteadyStateProbsForBSCC(dtmc, bscc, solnProbs, bsccPostProcessor);
+
+				for (FunctionalPrimitiveIterator.OfInt iter = new IterableBitSet(bscc).iterator(); iter.hasNext();) {
+					int state = iter.nextInt();
+					solnProbs[state] = steadyStateProbs[state];
+				}
+
 				// Multiply by BSCC reach prob
 				for (int i = bscc.nextSetBit(0); i >= 0; i = bscc.nextSetBit(i + 1))
 					solnProbs[i] *= probBSCCs[b];
