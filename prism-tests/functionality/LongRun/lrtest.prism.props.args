@@ -1,10 +1,10 @@
--ex
--gs -ex 
--gs -ex -cachesteadystates
--gs -ex -nocachesteadystates
--gs -hybrid
--jor -mtbdd
--gs -hybrid -cachesteadystates
--jor -mtbdd -cachesteadystates
--gs -hybrid -nocachesteadystates
--jor -mtbdd -nocachesteadystates
+-ex -const x=1
+-gs -ex -const x=1
+-gs -ex -cachesteadystates -const x=1
+-gs -ex -nocachesteadystates -const x=1
+-gs -hybrid -const x=1
+-jor -mtbdd -const x=1
+-gs -hybrid -cachesteadystates -const x=1
+-jor -mtbdd -cachesteadystates -const x=1
+-gs -hybrid -nocachesteadystates -const x=1
+-jor -mtbdd -nocachesteadystates -const x=1

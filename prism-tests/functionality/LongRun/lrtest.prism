@@ -1,5 +1,7 @@
 dtmc
 
+const double x;
+
 module M
 
 s : [0..5] init 0;
