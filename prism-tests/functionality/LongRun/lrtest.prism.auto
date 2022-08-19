@@ -1,2 +1,2 @@
--exportss lrtest-ss-ex.txt -ex -gs
--exportss lrtest-ss-hybrid.txt -hybrid -gs
+-exportss lrtest-ss-ex.txt -ex -gs -const x=1
+-exportss lrtest-ss-hybrid.txt -hybrid -gs -const x=1
