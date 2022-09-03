@@ -32,9 +32,12 @@ import java.io.File;
 import java.util.ArrayList;
 import java.util.BitSet;
 import java.util.List;
+import java.util.function.BiFunction;
 import java.util.function.IntPredicate;
 
+import common.IterableBitSet;
 import common.IterableStateSet;
+import common.iterable.FunctionalPrimitiveIterator;
 import common.iterable.Reducible;
 import parser.State;
 import parser.type.Type;
@@ -55,6 +58,7 @@ public final class StateValues
 	private ArrayList<StateValue> values;
 	/** initial state of the model */
 	private int initState;
+
 
 	/**
 	 * Constructs new set of state values.
@@ -136,6 +140,17 @@ public final class StateValues
 		}
 
 		return true;
+	}
+
+	public <T extends StateValue, U extends StateValue, R extends StateValue> void applyFunction(StateValues sv2, BiFunction<T,U,R> func, BitSet filter){
+
+		FunctionalPrimitiveIterator.OfInt iter = new IterableStateSet(filter,values.size()).iterator();
+
+		while (iter.hasNext()){
+			int i = iter.nextInt();
+			StateValue result = func.apply((T) getStateValue(i), (U) sv2.getStateValue(i));
+			setStateValue(i,result);
+		}
 	}
 
 	@Override
