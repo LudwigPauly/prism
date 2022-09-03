@@ -39,6 +39,7 @@ import common.iterable.Reducible;
 import parser.State;
 import parser.type.Type;
 import parser.type.TypeBool;
+import prism.PrismException;
 import prism.PrismLog;
 
 /**
@@ -98,6 +99,19 @@ public final class StateValues
 	public StateValues(int numStates, int initState, boolean value)
 	{
 		this(numStates, initState, new StateBoolean(value));
+	}
+
+	public static StateValues createFromFunctionArray(Function [] functions, ParamModel model) throws PrismException
+	{
+		if(model.getNumStates()!=functions.length) throw new PrismException("Number of states doesnt match with array length");
+
+		StateValues sv = new StateValues(model.getNumStates(),model.getFirstInitialState());
+
+		for(int i = 0; i < functions.length;i++){
+			sv.setStateValue(i,functions[i]);
+		}
+
+		return sv;
 	}
 
 	@Override
