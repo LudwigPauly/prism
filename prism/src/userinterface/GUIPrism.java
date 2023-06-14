@@ -65,11 +65,11 @@ import javax.swing.plaf.metal.MetalLookAndFeel;
 import javax.swing.plaf.metal.MetalTheme;
 
 import prism.Prism;
-//Prism Packages
 import prism.PrismException;
-import prism.PrismFileLog;
 import prism.PrismLog;
 import prism.PrismNative;
+import prism.SteadyStateCache;
+//Prism Packages
 import userinterface.util.GUIComputationEvent;
 import userinterface.util.GUIEvent;
 import userinterface.util.GUIEventHandler;
@@ -490,6 +490,9 @@ public class GUIPrism extends JFrame
 	{
 		doExit = true;
 		notifyEventListeners(new GUIExitEvent(GUIExitEvent.REQUEST_EXIT));
+
+		// clear SteadyStateCache
+		SteadyStateCache.getInstance().clear();
 
 		// Don't bug user to save defaults on exit
 		/*if (prism.getSettings().isModified()) {
