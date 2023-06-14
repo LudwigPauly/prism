@@ -27,60 +27,8 @@
 package parser.visitor;
 
 
-import parser.ast.ASTElement;
-import parser.ast.Command;
-import parser.ast.ConstantList;
-import parser.ast.Declaration;
-import parser.ast.DeclarationArray;
-import parser.ast.DeclarationBool;
-import parser.ast.DeclarationClock;
-import parser.ast.DeclarationInt;
-import parser.ast.DeclarationIntUnbounded;
-import parser.ast.ExpressionBinaryOp;
-import parser.ast.ExpressionConstant;
-import parser.ast.ExpressionExists;
-import parser.ast.ExpressionFilter;
-import parser.ast.ExpressionForAll;
-import parser.ast.ExpressionFormula;
-import parser.ast.ExpressionFunc;
-import parser.ast.ExpressionITE;
-import parser.ast.ExpressionIdent;
-import parser.ast.ExpressionInterval;
-import parser.ast.ExpressionLabel;
-import parser.ast.ExpressionLiteral;
-import parser.ast.ExpressionObs;
-import parser.ast.ExpressionProb;
-import parser.ast.ExpressionProp;
-import parser.ast.ExpressionReward;
-import parser.ast.ExpressionSS;
-import parser.ast.ExpressionStrategy;
-import parser.ast.ExpressionTemporal;
-import parser.ast.ExpressionUnaryOp;
-import parser.ast.ExpressionVar;
-import parser.ast.Filter;
-import parser.ast.ForLoop;
-import parser.ast.FormulaList;
-import parser.ast.LabelList;
+import parser.ast.*;
 import parser.ast.Module;
-import parser.ast.ModulesFile;
-import parser.ast.Observable;
-import parser.ast.ObservableVars;
-import parser.ast.PropertiesFile;
-import parser.ast.Property;
-import parser.ast.RenamedModule;
-import parser.ast.RewardStruct;
-import parser.ast.RewardStructItem;
-import parser.ast.SystemBrackets;
-import parser.ast.SystemFullParallel;
-import parser.ast.SystemHide;
-import parser.ast.SystemInterleaved;
-import parser.ast.SystemModule;
-import parser.ast.SystemParallel;
-import parser.ast.SystemReference;
-import parser.ast.SystemRename;
-import parser.ast.Update;
-import parser.ast.UpdateElement;
-import parser.ast.Updates;
 import prism.PrismLangException;
 
 import java.util.List;
@@ -383,6 +331,12 @@ public class DeepCopy implements ASTVisitor
 
 	@Override
 	public Object visit(ExpressionReward e) throws PrismLangException
+	{
+		return e.clone().deepCopy(this);
+	}
+
+	@Override
+	public Object visit(ExpressionLongRun e) throws PrismLangException
 	{
 		return e.clone().deepCopy(this);
 	}
