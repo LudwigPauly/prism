@@ -32,11 +32,15 @@ import java.io.File;
 import java.util.BitSet;
 import java.util.List;
 
+import common.IterableBitSet;
+import common.iterable.FunctionalPrimitiveIterator.OfInt;
 import explicit.rewards.ConstructRewards;
 import explicit.rewards.MCRewards;
 import explicit.rewards.MDPRewards;
 import explicit.rewards.Rewards;
 import explicit.rewards.STPGRewards;
+import explicit.DTMCModelChecker.ReachBsccComputer;
+import prism.SteadyStateProbs.SteadyStateProbsExplicit;
 import parser.ast.Coalition;
 import parser.ast.Expression;
 import parser.ast.ExpressionProb;
@@ -45,6 +49,7 @@ import parser.ast.ExpressionSS;
 import parser.ast.ExpressionStrategy;
 import parser.ast.ExpressionTemporal;
 import parser.ast.ExpressionUnaryOp;
+import parser.ast.ExpressionLongRun;
 import parser.type.TypeBool;
 import parser.type.TypeDouble;
 import parser.type.TypePathBool;
@@ -60,6 +65,9 @@ import prism.PrismLog;
 import prism.PrismNotSupportedException;
 import prism.PrismSettings;
 import prism.RewardGenerator;
+import prism.ModelType;
+import prism.SteadyStateCache;
+import prism.SteadyStateProbs;
 
 /**
  * Super class for explicit-state probabilistic model checkers.
@@ -544,6 +552,10 @@ public class ProbModelChecker extends NonProbModelChecker
 		// R operator
 		else if (expr instanceof ExpressionReward) {
 			res = checkExpressionReward(model, (ExpressionReward) expr, statesOfInterest);
+		}
+		// L operator
+		else if (expr instanceof ExpressionLongRun) {
+			res = checkExpressionLongRun(model, (ExpressionLongRun) expr, statesOfInterest);
 		}
 		// S operator
 		else if (expr instanceof ExpressionSS) {
@@ -1245,6 +1257,118 @@ public class ProbModelChecker extends NonProbModelChecker
 	}
 
 	/**
+	 * Model check relativized long-run, i.e., L operator.
+	 *
+	 * @param model a Model
+	 * @param expr a long-run expression
+	 * @param statesOfInterest states for which the expression has to be computed
+	 * @return the relativized long-run value for each state of interest
+	 * @throws PrismException
+	 */
+	public StateValues checkExpressionLongRun(Model model, ExpressionLongRun expr, BitSet statesOfInterest) throws PrismException
+	{
+		if (model.getModelType() != ModelType.DTMC && model.getModelType() != ModelType.CTMC) {
+			throw new PrismNotSupportedException("Explicit engine does not yet handle the L operator for " + model.getModelType() + "s");
+		}
+		assert model instanceof DTMC;
+		assert this instanceof MCModelChecker;
+
+		BitSet states = checkExpression(model, expr.getStates(), null).getBitSet();
+		assert states != null : "Booolean result expected.";
+
+		StateValues values = checkExpression(model, expr.getExpression(), states);
+		assert values.getType() != TypeBool.getInstance() : "Non-Boolean values expected.";
+
+		ReachBsccComputer<MCModelChecker<?>> reachComputer = new DTMCModelChecker.ReachBsccComputer<>((MCModelChecker<?>) this, (DTMC) model);
+		return computeLongRun((DTMC) model, values, states, reachComputer, statesOfInterest);
+	}
+
+	// FIXME ALG: check types
+	protected StateValues computeLongRun(DTMC dtmc, StateValues values, BitSet states, ReachBsccComputer<?> reachComputer, BitSet statesOfInterest)
+			throws PrismException
+	{
+		assert this instanceof MCModelChecker;
+		// Store num states, fix statesOfInterest
+		int numStates = dtmc.getNumStates();
+		if (statesOfInterest == null) {
+			statesOfInterest = new BitSet(numStates);
+			statesOfInterest.flip(0, numStates);
+		}
+
+		// 1. compute steady-state probabilities or fetch from cache
+		SteadyStateProbsExplicit steadyStateProbsBscc;
+
+		if (SteadyStateCache.getInstance().isEnabled()) {
+			SteadyStateCache cache = SteadyStateCache.getInstance();
+			if (cache.containsSteadyStateProbs(dtmc)) {
+				mainLog.println("\nTaking steady-state probabilities from cache.");
+				steadyStateProbsBscc = cache.getSteadyStateProbs(dtmc);
+			} else {
+				mainLog.println("\nComputing steady-state probabilities.");
+				steadyStateProbsBscc = SteadyStateProbs.computeCompact((MCModelChecker<?>) this, dtmc);
+				mainLog.println("\nCaching steady-state probabilities.");
+				cache.storeSteadyStateProbs(dtmc, steadyStateProbsBscc, settings);
+			}
+		} else {
+			steadyStateProbsBscc = SteadyStateProbs.computeSimple((MCModelChecker<?>) this, dtmc);
+		}
+		BitSet nonBsccStates = steadyStateProbsBscc.getNonBsccStates();
+		StateValues steadyStateProbs = StateValues.createFromDoubleArray(steadyStateProbsBscc.getSteadyStateProbabilities(), dtmc);
+
+		// 2. compute weighted sums for each state-of-interest
+		double[] numerator   = new double[numStates];
+		double[] denominator = new double[numStates];
+		// weightedValues = values x steady (filter by states)
+		StateValues weightedValues = values.deepCopy();
+		weightedValues.applyFunction(TypeDouble.getInstance(), (v1,v2) -> (double)v1 * (double)v2,steadyStateProbs,states);
+		// skip reach computation if each state-of-interest is in a bscc
+		boolean computeReachProbs = statesOfInterest.intersects(nonBsccStates);
+		for (BitSet bscc : steadyStateProbsBscc.getBSCCs()) {
+			// compute intersection of states and current BSCC
+			BitSet statesInBscc = (BitSet) bscc.clone();
+			statesInBscc.and(states);
+			if (statesInBscc.isEmpty()) {
+				// no state in current BSCC, skip BSCC
+				continue;
+			}
+			// compute probability to reach BSCC
+			double[] reachProbs;
+			if (computeReachProbs) {
+				// if some state-of-interest is not in a BSCC:
+				reachProbs = reachComputer.computeUntilProbs(nonBsccStates, bscc, statesOfInterest);
+			} else {
+				// each state-of-interest is in a BSCC
+				BitSet probs = (BitSet) bscc.clone();
+				probs.and(statesOfInterest);
+				reachProbs = Utils.bitsetToDoubleArray(probs, numStates);
+			}
+			// compute weighted sum
+			double sumWeight = (double) weightedValues.sumOverBitSet(statesInBscc);
+			double sumSteady = (double) steadyStateProbs.sumOverBitSet(statesInBscc);
+			for (OfInt iter = new IterableBitSet(statesOfInterest).iterator(); iter.hasNext();) {
+				int state = iter.nextInt();
+				numerator[state]   += reachProbs[state] * sumWeight;
+				denominator[state] += reachProbs[state] * sumSteady;
+			}
+			// remove visited bscc states
+			states.andNot(bscc);
+			if (states.isEmpty()) {
+				// no states left, skip remaining BSCCs
+				break;
+			}
+		}
+
+		// 3. compute final quotient
+		double[] quotient = numerator;
+		for (OfInt iter = new IterableBitSet(statesOfInterest).iterator(); iter.hasNext();) {
+			int state = iter.nextInt();
+			quotient[state] /= denominator[state];
+		}
+		return StateValues.createFromDoubleArray(quotient, dtmc);
+	}
+
+
+	/**
 	 * Model check an S operator expression and return the values for all states.
 	 */
 	protected StateValues checkExpressionSteadyState(Model<?> model, ExpressionSS expr) throws PrismException
@@ -1398,7 +1522,7 @@ public class ProbModelChecker extends NonProbModelChecker
 			}
 		}
 	}
-	
+
 	/**
 	 * Export (non-zero) state rewards from an MDPRewards object.
 	 * @param model The model
@@ -1427,7 +1551,7 @@ public class ProbModelChecker extends NonProbModelChecker
 			}
 		}
 	}
-	
+
 	/**
 	 * Print header to srew file, when not disabled.
 	 * Header format with optional reward struct name:

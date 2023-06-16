@@ -27,8 +27,11 @@
 
 package explicit.modelviews;
 
+import java.math.BigInteger;
 import java.util.BitSet;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.PrimitiveIterator.OfInt;
 
 import common.iterable.FilteringIterable;
@@ -53,6 +56,7 @@ public abstract class ModelView<Value> implements Model<Value>
 {
 	protected BitSet deadlockStates = new BitSet();
 	protected boolean fixedDeadlocks = false;
+	protected Map<String,BitSet> labels = new HashMap<>();
 	protected PredecessorRelation predecessorRelation;
 
 
@@ -195,7 +199,21 @@ public abstract class ModelView<Value> implements Model<Value>
 		predecessorRelation = null;
 	}
 
+	@Override public void addLabel(String name, BitSet states)
+	{
+		labels.put(name, states);
+	}
 
+	@Override public String addUniqueLabel(String prefix, BitSet labelStates)
+	{
+		String label = prefix;
+		for (BigInteger i = BigInteger.ZERO; hasLabel(label); i = i.add(BigInteger.ONE)) {
+			label = prefix + "_" + i;
+		}
+
+		addLabel(label, labelStates);
+		return label;
+	}
 
 	//--- instance methods ---
 
