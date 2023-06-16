@@ -253,7 +253,6 @@ public class StateModelChecker extends PrismComponent implements ModelChecker
 		return result;
 	}
 
-	@Override
 	public StateValues checkExpression(Expression expr, JDDNode statesOfInterest) throws PrismException
 	{
 		StateValues res;

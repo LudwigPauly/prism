@@ -143,6 +143,18 @@ public class StateValuesVoid implements StateValues
 	}
 
 	@Override
+	public void times(StateValues mult) throws PrismException
+	{
+		throw new UnsupportedOperationException();
+	}
+
+	@Override
+	public void divide(StateValues div) throws PrismException
+	{
+		throw new UnsupportedOperationException();
+	}
+
+	@Override
 	public void maxMTBDD(JDDNode vec2)
 	{
 		throw new UnsupportedOperationException();
