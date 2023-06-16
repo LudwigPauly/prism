@@ -103,6 +103,29 @@ public interface StateValues extends StateVector
 	 */
 	void filter(JDDNode filter, double d);
 
+
+	/**
+	 * Perform an entrywise multiplication (Hadamard/Schur product).
+	 */
+	void times(StateValues mult) throws PrismException;
+
+	/**
+	 * Perform an entrywise multiplication (Hadamard/Schur product) for all states in (BDD) filter.
+	 */
+	default void times(StateValues mult, JDDNode filter) throws PrismException
+	{
+		StateValues multFiltered = mult.deepCopy();
+		multFiltered.filter(filter, 1.0);
+		times(multFiltered);
+		multFiltered.clear();
+	}
+
+	/**
+	 * Perform an entrywise division (Hadamard/Schur quotient).
+	 */
+	void divide(StateValues div) throws PrismException;
+
+
 	/**
 	 * Apply max operator, i.e. vec[i] = max(vec[i], vec2[i]), where vec2 is an MTBDD
 	 * <br>[ DEREFS: <i>none</i> ]
