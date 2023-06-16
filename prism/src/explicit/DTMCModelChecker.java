@@ -39,7 +39,6 @@ import java.util.PrimitiveIterator.OfInt;
 
 import acceptance.AcceptanceReach;
 import acceptance.AcceptanceType;
-import common.BitSetTools;
 import common.IntSet;
 import common.IterableBitSet;
 import common.StopWatch;
@@ -834,10 +833,10 @@ public class DTMCModelChecker extends ProbModelChecker implements MCModelChecker
 		// mark all states in 'target' and all states not in 'remain' as absorbing
 		BitSet absorbing;
 		if (remain != null) {
-			// union of complement of remain and target
-			BitSetTools.asBitSet((Iterator<Integer>) null);
-			absorbing = BitSetTools.complement(remain, numStates);
-			absorbing.or(target);
+			// complement remain
+			absorbing = new BitSet();
+			absorbing.set(0, dtmc.getNumStates(), true);
+			absorbing.andNot(remain);
 		} else {
 			// for remain == null, remain consists of all states
 			// thus, absorbing = target
