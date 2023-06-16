@@ -288,6 +288,41 @@ public class ProbModelChecker extends NonProbModelChecker
 		}
 	}
 
+	protected StateValues addScalarProduct(StateValues values, double scalar, StateValues summand) throws PrismException
+	{
+		StateValues tmp = summand.deepCopy();
+		tmp.timesConstant(scalar);
+		values.add(tmp);
+		tmp.clear();
+		return values;
+	}
+
+	protected SCCComputer getSccComputer() throws PrismException
+	{
+		return prism.getSCCComputer(model);
+	}
+
+	/**
+	 * Create a StateValues vector that is initialized with the argument.
+	 *
+	 * @param constant initial value for all states
+	 */
+	public StateValues createVector(double constant) throws PrismException
+	{
+		if (engine == Prism.MTBDD) {
+			return new StateValuesMTBDD(JDD.Constant(0), model);
+		}
+		if (! (engine == Prism.HYBRID || engine == Prism.SPARSE)) {
+			throw new PrismNotSupportedException("Unknown engine: " + Prism.getEngineString(engine));
+		}
+		DoubleVector vector = new DoubleVector((int) model.getNumStates());
+		if (constant != 0.0) {
+			vector.setAllElements(constant);
+		}
+		return new StateValuesDV(vector, model);
+	}
+
+
 	// S operator
 
 	/**
@@ -2559,6 +2594,11 @@ public class ProbModelChecker extends NonProbModelChecker
 			initDist.clear();
 
 		return solnProbs;
+	}
+
+	public StateValues computeSteadyStateProbsForBSCC(JDDNode bscc) throws PrismException
+	{
+		return computeSteadyStateProbsForBSCC(trans, bscc);
 	}
 
 	/**
