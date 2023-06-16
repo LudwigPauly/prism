@@ -26,6 +26,7 @@
 
 package explicit;
 
+import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.BitSet;
 import java.util.List;
@@ -50,7 +51,7 @@ public abstract class ModelExplicit<Value> implements Model<Value>
 	/** Evaluator for manipulating values in the model (of type {@code Value}) */
 	@SuppressWarnings("unchecked")
 	protected Evaluator<Value> eval = (Evaluator<Value>) Evaluator.forDouble();
-	
+
 	// Basic model information
 
 	/** Number of states */
@@ -88,7 +89,7 @@ public abstract class ModelExplicit<Value> implements Model<Value>
 	{
 		this.eval = eval;
 	}
-	
+
 	/**
 	 * Copy data from another Model (used by superclass copy constructors).
 	 * Assumes that this has already been initialise()ed.
@@ -265,7 +266,7 @@ public abstract class ModelExplicit<Value> implements Model<Value>
 	{
 		return eval;
 	}
-	
+
 	@Override
 	public int getNumStates()
 	{
@@ -451,5 +452,18 @@ public abstract class ModelExplicit<Value> implements Model<Value>
 	@Override
 	public void clearPredecessorRelation() {
 		predecessorRelation = null;
+	}
+
+
+	@Override
+	public String addUniqueLabel(String prefix, BitSet labelStates)
+	{
+		String label = prefix;
+		for (BigInteger i = BigInteger.ZERO; hasLabel(label); i=i.add(BigInteger.ONE)) {
+			label = prefix + "_" + i;
+		}
+
+		addLabel(label, labelStates);
+		return label;
 	}
 }
