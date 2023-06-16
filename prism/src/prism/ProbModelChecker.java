@@ -54,6 +54,8 @@ import parser.ast.ExpressionReward;
 import parser.ast.ExpressionSS;
 import parser.ast.ExpressionTemporal;
 import parser.ast.ExpressionUnaryOp;
+import parser.ast.ExpressionLongRun;
+import parser.ast.ExpressionLabel;
 import parser.ast.PropertiesFile;
 import parser.ast.RelOp;
 import parser.type.TypeBool;
@@ -140,6 +142,10 @@ public class ProbModelChecker extends NonProbModelChecker
 		// R operator
 		else if (expr instanceof ExpressionReward) {
 			res = checkExpressionReward((ExpressionReward) expr, statesOfInterest);
+		}
+		// L operator
+		else if (expr instanceof ExpressionLongRun) {
+			res = checkExpressionLongRun((ExpressionLongRun) expr, statesOfInterest);
 		}
 		// S operator
 		else if (expr instanceof ExpressionSS) {
@@ -286,6 +292,156 @@ public class ProbModelChecker extends NonProbModelChecker
 			rewards.clear();
 			return new StateValuesMTBDD(sol, model);
 		}
+	}
+
+	// L operator
+
+	protected class ReachBsccComputer
+	{
+		ProbModel model;
+		String bsccName                     = null;
+		String nonBsccName                  = null;
+		ExpressionProb untilBscc            = null;
+
+		public ReachBsccComputer(ProbModel model)
+		{
+			this.model = model;
+			bsccName      = model.addUniqueLabelDD("current_bscc", JDD.Constant(0),getDefinedLabelNames());
+			nonBsccName   = model.addUniqueLabelDD("non_bscc_states", JDD.Constant(0),getDefinedLabelNames());
+			untilBscc     = new ExpressionProb(Expression.Until(new ExpressionLabel(nonBsccName), new ExpressionLabel(bsccName)), RelOp.EQ.toString(), null);
+		}
+
+		public ReachBsccComputer clear()
+		{
+			if (bsccName != null) {
+				JDD.Deref(model.getLabelDD(bsccName));
+				JDD.Deref(model.getLabelDD(nonBsccName));
+				bsccName      = null;
+				nonBsccName   = null;
+				untilBscc     = null;
+			}
+			return this;
+		}
+
+		public StateValues computeUntilProbs(JDDNode nonBsccStates, JDDNode bsccStates, JDDNode statesOfInterest) throws PrismException
+		{
+				return ProbModelChecker.this.computeUntilProbs(trans, trans01, nonBsccStates, bsccStates);
+		}
+
+	}
+
+	/**
+	 * Model check relativized long-run, i.e., L operator.
+	 *
+	 * @param expr a long-run expression
+	 * @param statesOfInterest states for which the expression has to be computed
+	 * @return the relativized long-run value for each state of interest
+	 * @throws PrismException
+	 */
+	public StateValues checkExpressionLongRun(ExpressionLongRun expr, JDDNode statesOfInterest) throws PrismException
+	{
+		JDDNode states = checkExpression(expr.getStates(), reach.copy()).convertToStateValuesMTBDD().getJDDNode();
+		assert JDD.IsZeroOneMTBDD(states) : "Boolean result expected.";
+
+		StateValues values = checkExpression(expr.getExpression(), states.copy());
+
+		ReachBsccComputer reachComputer = new ReachBsccComputer(model);
+		StateValues resultValues = computeLongRun(values, states, reachComputer, statesOfInterest);
+		OpRelOpBound opInfo = expr.getRelopBoundInfo(constantValues);
+		// For =? properties, just return values
+		if (opInfo.isNumeric()) {
+			return resultValues;
+		}
+		// Otherwise, compare against bound to get set of satisfying states
+		JDDNode resultBooleans = resultValues.getBDDFromInterval(opInfo.getRelOp(), opInfo.getBound());
+		// remove unreachable states from solution
+		JDD.Ref(reach);
+		resultBooleans = JDD.And(resultBooleans, reach);
+		// free vector
+		resultValues.clear();
+		return new StateValuesMTBDD(resultBooleans, model);
+	}
+
+
+	/**
+	 * <br>[ REFS: <i>result</i>, DEREFS: values, states, statesOfInterest ]
+	 */
+	protected StateValues computeLongRun(StateValues values, JDDNode states, ReachBsccComputer reachComputer, JDDNode statesOfInterest) throws PrismException
+	{
+		// 1. compute steady-state probabilities or fetch from cache
+		SteadyStateProbs.SteadyStateProbsSymbolic steadyStateProbsBscc;
+
+		if (SteadyStateCache.getInstance().isEnabled()) {
+			SteadyStateCache cache = SteadyStateCache.getInstance();
+			if (cache.containsSteadyStateProbs(model)) {
+				mainLog.println("\nTaking steady-state probabilities from cache.");
+				steadyStateProbsBscc = cache.getSteadyStateProbs(model).deepCopy();
+			} else {
+				mainLog.println("\nComputing steady-state probabilities.");
+				steadyStateProbsBscc = SteadyStateProbs.computeSymbolic(this);
+				mainLog.println("\nCaching steady-state probabilities.");
+				cache.storeSteadyStateProbs(model, steadyStateProbsBscc.deepCopy(), settings);
+			}
+		} else {
+			steadyStateProbsBscc = SteadyStateProbs.computeSymbolic(this);
+		}
+		JDDNode nonBsccStates = steadyStateProbsBscc.getNonBsccStates();
+		StateValues steadyStateProbs =steadyStateProbsBscc.getSteadyStateProbabilities();
+
+		// 2. compute weighted sums for each state-of-interest
+		StateValues numerator   = createVector(0);
+		StateValues denominator = createVector(0);
+		// weightedValues = values x steady (filter by states)
+		StateValues weightedValues = values;
+		weightedValues.times(steadyStateProbs, states);
+		// skip reach computation if each state-of-interest is in a bscc
+		boolean computeReachProbs = JDD.AreIntersecting(statesOfInterest, nonBsccStates);
+		for (JDDNode bscc : steadyStateProbsBscc.getBSCCs()) {
+			// compute intersection of states and current BSCC
+			JDDNode statesInBscc = JDD.And(bscc.copy(), states.copy());
+			if (statesInBscc.equals(JDD.ZERO)) {
+				// no state in current BSCC, skip BSCC
+				JDD.Deref(statesInBscc);
+				continue;
+			}
+			// compute probability to reach BSCC
+			StateValues reachProbs;
+			if (computeReachProbs) {
+				// if some state-of-interest is not in a BSCC:
+				reachProbs = reachComputer.computeUntilProbs(nonBsccStates.copy(), bscc.copy(), statesOfInterest.copy());
+				reachProbs.filter(statesOfInterest);
+			} else {
+				// each state-of-interest is in a BSCC
+				JDDNode probs = JDD.And(bscc.copy(), statesOfInterest.copy());
+				reachProbs = new StateValuesMTBDD(probs, model);
+				if ((engine == Prism.HYBRID || engine == Prism.SPARSE)) {
+					reachProbs = reachProbs.convertToStateValuesDV();
+				}
+			}
+			// compute weighted sum
+			double sumWeight = weightedValues.sumOverBDD(statesInBscc);
+			double sumSteady = steadyStateProbs.sumOverBDD(statesInBscc);
+			numerator   = addScalarProduct(numerator, sumWeight, reachProbs);
+			denominator = addScalarProduct(denominator, sumSteady, reachProbs);
+			// remove visited bscc states
+			states = JDD.And(states, JDD.Not(bscc.copy()));
+			// clear
+			JDD.Deref(statesInBscc);
+			reachProbs.clear();
+		}
+
+		// 3. compute final quotient
+		StateValues quotient = numerator;
+		quotient.divide(denominator);
+
+		// clear
+		steadyStateProbsBscc.clear();
+		reachComputer.clear();
+		denominator.clear();
+		weightedValues.clear();
+		JDD.Deref(states, statesOfInterest);
+		return quotient;
+
 	}
 
 	protected StateValues addScalarProduct(StateValues values, double scalar, StateValues summand) throws PrismException
