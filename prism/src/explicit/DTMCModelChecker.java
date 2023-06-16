@@ -50,6 +50,9 @@ import explicit.rewards.MCRewards;
 import explicit.rewards.MDPRewards;
 import explicit.rewards.Rewards;
 import parser.ast.Expression;
+import parser.ast.ExpressionLabel;
+import parser.ast.ExpressionProb;
+import parser.ast.RelOp;
 import prism.AccuracyFactory;
 import prism.ModelType;
 import prism.OptionsIntervalIteration;
@@ -1984,6 +1987,44 @@ public class DTMCModelChecker extends ProbModelChecker implements MCModelChecker
 		}
 	}
 
+	// L operator
+
+	protected static class ReachBsccComputer<T extends MCModelChecker<?>>
+	{
+		T mc;
+		DTMC model;
+		String bsccName                     = null;
+		String nonBsccName                  = null;
+		ExpressionProb untilBscc            = null;
+
+		public ReachBsccComputer(T mc, DTMC model)
+		{
+			this.mc = mc;
+			this.model = model;
+			bsccName      = model.addUniqueLabel("current_bscc", new BitSet(0));
+			nonBsccName   = model.addUniqueLabel("non_bscc_states", new BitSet(0));
+			untilBscc     = new ExpressionProb(Expression.Until(new ExpressionLabel(nonBsccName), new ExpressionLabel(bsccName)), RelOp.EQ.toString(), null);
+
+		}
+
+		public ReachBsccComputer<T> clear()
+		{
+			if (bsccName != null) {
+				model.getLabelStates(bsccName).clear();
+				model.getLabelStates(nonBsccName).clear();
+				bsccName      = null;
+				nonBsccName   = null;
+				untilBscc     = null;
+			}
+			return this;
+		}
+
+		public double[] computeUntilProbs(BitSet nonBsccStates, BitSet bsccStates, BitSet statesOfInterest) throws PrismException
+		{
+			return mc.createDTMCModelChecker().computeUntilProbs(model, nonBsccStates, bsccStates).soln;
+		}
+	}
+
 	/**
 	 * Compute expected reachability rewards using interval iteration.
 	 * @param dtmc The DTMC
@@ -2175,6 +2216,7 @@ public class DTMCModelChecker extends ProbModelChecker implements MCModelChecker
 		int numStates = dtmc.getNumStates();
 		// Create results vector
 		double[] solnProbs = new double[numStates];
+
 
 		SteadyStateProbs.SteadyStateProbsExplicit steadyStateProbsBscc;
 

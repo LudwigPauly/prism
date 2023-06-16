@@ -39,6 +39,8 @@ import explicit.rewards.MCRewards;
 import explicit.rewards.MDPRewards;
 import explicit.rewards.Rewards;
 import explicit.rewards.STPGRewards;
+import explicit.DTMCModelChecker.ReachBsccComputer;
+import prism.SteadyStateProbs.SteadyStateProbsExplicit;
 import parser.ast.Coalition;
 import parser.ast.Expression;
 import parser.ast.ExpressionProb;
@@ -66,7 +68,6 @@ import prism.RewardGenerator;
 import prism.ModelType;
 import prism.SteadyStateCache;
 import prism.SteadyStateProbs;
-import prism.SteadyStateProbs.SteadyStateProbsExplicit;
 
 /**
  * Super class for explicit-state probabilistic model checkers.
@@ -1266,22 +1267,6 @@ public class ProbModelChecker extends NonProbModelChecker
 	 */
 	public StateValues checkExpressionLongRun(Model model, ExpressionLongRun expr, BitSet statesOfInterest) throws PrismException
 	{
-		return checkConditionalExpressionLongRun(model, expr, null, statesOfInterest);
-	}
-
-	/**
-	 * Model check relativized long-run, i.e., L operator, under a condition.
-	 *
-	 * @param dtmc a DTMC
-	 * @param expr a long-run expression
-	 * @param statesOfInterest states for which the expression has to be computed
-	 * @param condition path event under which the relativized long-run is considered
-	 * @return the relativized long-run value for each state of interest
-	 * @throws PrismException
-	 */
-	// FIXME ALG: check types
-	public StateValues checkConditionalExpressionLongRun(Model model, ExpressionLongRun expr, Expression condition, BitSet statesOfInterest) throws PrismException
-	{
 		if (model.getModelType() != ModelType.DTMC && model.getModelType() != ModelType.CTMC) {
 			throw new PrismNotSupportedException("Explicit engine does not yet handle the L operator for " + model.getModelType() + "s");
 		}
@@ -1294,7 +1279,7 @@ public class ProbModelChecker extends NonProbModelChecker
 		StateValues values = checkExpression(model, expr.getExpression(), states);
 		assert values.getType() != TypeBool.getInstance() : "Non-Boolean values expected.";
 
-		ReachBsccComputer<MCModelChecker<?>> reachComputer = new DTMCModelChecker.ReachBsccComputer<>((MCModelChecker<?>) this, (DTMC) model, condition);
+		ReachBsccComputer<MCModelChecker<?>> reachComputer = new DTMCModelChecker.ReachBsccComputer<>((MCModelChecker<?>) this, (DTMC) model);
 		return computeLongRun((DTMC) model, values, states, reachComputer, statesOfInterest);
 	}
 
@@ -1312,6 +1297,7 @@ public class ProbModelChecker extends NonProbModelChecker
 
 		// 1. compute steady-state probabilities or fetch from cache
 		SteadyStateProbsExplicit steadyStateProbsBscc;
+
 		if (SteadyStateCache.getInstance().isEnabled()) {
 			SteadyStateCache cache = SteadyStateCache.getInstance();
 			if (cache.containsSteadyStateProbs(dtmc)) {
@@ -1334,7 +1320,7 @@ public class ProbModelChecker extends NonProbModelChecker
 		double[] denominator = new double[numStates];
 		// weightedValues = values x steady (filter by states)
 		StateValues weightedValues = values.deepCopy();
-		weightedValues.times(steadyStateProbs, states);
+		weightedValues.applyFunction(TypeDouble.getInstance(), (v1,v2) -> (double)v1 * (double)v2,steadyStateProbs,states);
 		// skip reach computation if each state-of-interest is in a bscc
 		boolean computeReachProbs = statesOfInterest.intersects(nonBsccStates);
 		for (BitSet bscc : steadyStateProbsBscc.getBSCCs()) {
@@ -1380,6 +1366,7 @@ public class ProbModelChecker extends NonProbModelChecker
 		}
 		return StateValues.createFromDoubleArray(quotient, dtmc);
 	}
+
 
 	/**
 	 * Model check an S operator expression and return the values for all states.
