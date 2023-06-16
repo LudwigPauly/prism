@@ -273,6 +273,48 @@ public class StateValuesMTBDD implements StateValues
 		values = JDD.Times(reach.copy(), JDD.ITE(filter.copy(), values, JDD.Constant(d)));
 	}
 
+	/* (non-Javadoc)
+	 * @see prism.StateValues#times(prism.StateValues)
+	 */
+	@Override
+	public void times(StateValues mult) throws PrismException
+	{
+		if (mult instanceof StateValuesMTBDD) {
+			times((StateValuesMTBDD)mult);
+		} else {
+			StateValuesMTBDD multMTBDD = mult.deepCopy().convertToStateValuesMTBDD();
+			times(multMTBDD);
+			multMTBDD.clear();
+		}
+	}
+
+	public void times(StateValuesMTBDD mult)
+	{
+		JDD.Ref(mult.values);
+		values = JDD.Apply(JDD.TIMES, values, mult.values);
+	}
+
+	/* (non-Javadoc)
+	 * @see prism.StateValues#divide(prism.StateValues)
+	 */
+	@Override
+	public void divide(StateValues div) throws PrismException
+	{
+		if (div instanceof StateValuesMTBDD) {
+			divide((StateValuesMTBDD)div);
+		} else {
+			StateValuesMTBDD multMTBDD = div.deepCopy().convertToStateValuesMTBDD();
+			divide(multMTBDD);
+			multMTBDD.clear();
+		}
+	}
+
+	public void divide(StateValuesMTBDD div)
+	{
+		JDD.Ref(div.values);
+		values = JDD.Apply(JDD.DIVIDE, values, div.values);
+	}
+
 	@Override
 	public void maxMTBDD(JDDNode vec2)
 	{
