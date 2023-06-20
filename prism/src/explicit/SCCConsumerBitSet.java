@@ -28,6 +28,7 @@ package explicit;
 
 import java.util.BitSet;
 
+import prism.PrismComponent;
 import prism.PrismException;
 
 /**
@@ -42,10 +43,11 @@ import prism.PrismException;
  * passed to {@code notifyNextSCC} can be reused for the next call, the {@code reuseBitSet}
  * flag can be set in the constructor.
  */
-public abstract class SCCConsumerBitSet implements SCCConsumer
+public abstract class SCCConsumerBitSet extends PrismComponent implements SCCConsumer
 {
 	private BitSet curSCC = null;
 	private boolean reuseBitSet = false;
+	protected Model model;
 
 	/** Default constructor. Don't reuse the BitSets */
 	public SCCConsumerBitSet()
@@ -63,6 +65,12 @@ public abstract class SCCConsumerBitSet implements SCCConsumer
 		this.reuseBitSet = reuseBitSet;
 		if (reuseBitSet)
 			curSCC = new BitSet();
+	}
+
+	public SCCConsumerBitSet(PrismComponent parent, Model model)
+	{
+		super(parent);
+		this.model = model;
 	}
 
 	@Override
