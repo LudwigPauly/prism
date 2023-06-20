@@ -294,6 +294,9 @@ public class Prism extends PrismComponent implements PrismSettingsListener
 		settings.addSettingsListener(this);
 		// create list of model listeners
 		modelListeners = new ArrayList<PrismModelListener>();
+		// add SteadyStateCache as a listener
+		settings.addSettingsListener(SteadyStateCache.getInstance());
+		SteadyStateCache.getInstance().notifySettings(settings);
 	}
 
 	/**
@@ -4030,6 +4033,8 @@ public class Prism extends PrismComponent implements PrismSettingsListener
 	private void clearBuiltModel()
 	{
 		if (currentModel != null) {
+			// clear SteadyStateCache
+			SteadyStateCache.getInstance().clear();
 			currentModel.clear();
 			currentModel = null;
 		}
