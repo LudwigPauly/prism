@@ -29,6 +29,7 @@ package parser.ast;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.stream.Collectors;
+import java.util.BitSet;
 
 import parser.EvaluateContext;
 import parser.EvaluateContext.EvalMode;
@@ -305,6 +306,18 @@ public class Update extends ASTElement implements Iterable<UpdateElement>
 		else {
 			return "true";
 		}
+	}
+
+
+	/**
+	 * @return The set of variables touched by this update.
+	 */
+	public BitSet getAffectedVariables() {
+		final BitSet variables = new BitSet();
+		for (int variable=0; variable<getNumElements(); variable++) {
+			variables.set(getVarIndex(variable));
+		}
+		return variables;
 	}
 }
 
