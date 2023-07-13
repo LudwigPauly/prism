@@ -310,15 +310,15 @@ public class Update extends ASTElement implements Iterable<UpdateElement>
 
 
 	/**
-	 * @return The set of variables touched by this update.
+	 * @return The set of variables written by this update.
 	 */
-	public BitSet getAffectedVariables() {
+	public BitSet getWrittenVariables() {
 		final BitSet variables = new BitSet();
 		for (int variable=0; variable<getNumElements(); variable++) {
 			variables.set(getVarIndex(variable));
 		}
 		return variables;
 	}
-}
+	}
 
 //------------------------------------------------------------------------------
