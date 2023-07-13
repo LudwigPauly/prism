@@ -30,6 +30,8 @@ import java.util.ArrayList;
 import java.util.BitSet;
 import java.util.List;
 
+import common.IterableBitSet;
+import common.iterable.FunctionalPrimitiveIterator;
 import parser.State;
 import parser.VarList;
 import parser.ast.Command;
@@ -184,6 +186,41 @@ public class ChoiceListFlexi<Value> implements Choice<Value>
 		return resolveConflicts(joined);
 	}
 
+	private List<Update> resolveConflicts(final List<Update> updates) throws PrismLangException
+	{
+		BitSet conflicts = getWriteConflicts(updates);
+		@SuppressWarnings("unchecked")
+		List<Update>[] conflictingUpdates = new List[conflicts.length()];
+		List<Update> resolvedUpdates = new ArrayList<Update>();
+
+		// check for each update whether it writes a conflicting variable
+		for (Update update : updates) {
+			Update resolved = update;
+			for (FunctionalPrimitiveIterator.OfInt vars = new IterableBitSet(update.getWrittenVariables()).iterator(); vars.hasNext();) {
+				int var = vars.nextInt();
+				if (conflicts.get(var)) {
+					// create split update in conflicting and non-conflicting writes
+					if (resolved == update) {
+						resolved = (Update) update.deepCopy();
+						resolved.setParent(update.getParent());
+					}
+					if (conflictingUpdates[var] == null) {
+						conflictingUpdates[var] = new ArrayList<>();
+					}
+					conflictingUpdates[var].add(resolved.split(var));
+				}
+			}
+			resolvedUpdates.add(resolved);
+		}
+		// create cumulative updates from conflicting writes
+		for (int var=0, size=conflictingUpdates.length; var<size; var++) {
+			if (conflictingUpdates[var] != null) {
+				resolvedUpdates.add(cumulateUpdatesForVariable(conflictingUpdates[var], var));
+			}
+		}
+		return resolvedUpdates;
+	}
+
 	private BitSet getWriteConflicts(final List<Update> updates)
 	{
 		final BitSet allWritten = new BitSet();
@@ -196,36 +233,6 @@ public class ChoiceListFlexi<Value> implements Choice<Value>
 			allWritten.or(written);
 		}
 		return allConflicts;
-	}
-
-	private List<Update> resolveConflicts(final List<Update> updates) throws PrismLangException {
-		final BitSet conflicts = getWriteConflicts(updates);
-
-		List<Update> currentUpdates = updates;
-		for (int variable = conflicts.nextSetBit(0); variable >= 0; variable = conflicts.nextSetBit(variable + 1)) {
-			final List<Update> resolvedUpdates = new ArrayList<Update>();
-			final List<Update> variableUpdates = new ArrayList<Update>();
-
-			for (Update update : currentUpdates) {
-				if (update.getWrittenVariables().get(variable)) {
-					final Update variableUpdate;
-					if (update.getNumElements() > 1) {
-						final Update modifiedUpdate = (Update) update.deepCopy();
-						modifiedUpdate.setParent(update.getParent());
-						variableUpdate = modifiedUpdate.split(variable);
-						resolvedUpdates.add(modifiedUpdate);
-					} else {
-						variableUpdate = update;
-					}
-					variableUpdates.add(variableUpdate);
-				} else {
-					resolvedUpdates.add(update);
-				}
-			}
-			resolvedUpdates.add(cumulateUpdatesForVariable(variableUpdates, variable));
-			currentUpdates = resolvedUpdates;
-		}
-		return currentUpdates;
 	}
 
 	private Update cumulateUpdatesForVariable(final List<Update> updates, final int variable) throws PrismLangException
