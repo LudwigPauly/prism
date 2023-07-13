@@ -155,6 +155,7 @@ public class ChoiceListFlexi<Value> implements Choice<Value>
 		updates = new ArrayList<List<Update>>(updates.size() * other.updates.size());
 		probability = new ArrayList<Value>(updates.size() * other.updates.size());
 
+		// cross product over updates indices
 		for (int i = oldUpdates.size() - 1; i >= 0; i--) {
 			for (int j = other.updates.size() - 1; j >= 0; j--) {
 				try {
@@ -183,18 +184,18 @@ public class ChoiceListFlexi<Value> implements Choice<Value>
 		return resolveConflicts(joined);
 	}
 
-	private BitSet getWriteConflicts(final List<Update> joined)
+	private BitSet getWriteConflicts(final List<Update> updates)
 	{
-		final BitSet written = new BitSet();
-		final BitSet conflicts = new BitSet();
-
-		for (Update update : joined) {
-			final BitSet writtenByUpdate = update.getWrittenVariables();
-			written.or(writtenByUpdate);
-			writtenByUpdate.and(written);
-			conflicts.or(writtenByUpdate);
+		final BitSet allWritten = new BitSet();
+		final BitSet allConflicts = new BitSet();
+		for (Update update : updates) {
+			BitSet written = update.getWrittenVariables();
+			BitSet conflicts = (BitSet) written.clone();
+			conflicts.and(allWritten);
+			allConflicts.or(conflicts);
+			allWritten.or(written);
 		}
-		return conflicts;
+		return allConflicts;
 	}
 
 	private List<Update> resolveConflicts(final List<Update> updates) throws PrismLangException {
