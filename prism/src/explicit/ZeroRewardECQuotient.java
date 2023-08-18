@@ -52,27 +52,27 @@ import prism.PrismException;
  * In the quotient, those zero-reward MECs are each collapsed to a single state,
  * with choices that have transitions outside the MEC preserved.
  */
-public class ZeroRewardECQuotient<Value>
+public class ZeroRewardECQuotient
 {
-	private MDPEquiv<Value> quotient;
-	private MDPRewards<Value> quotientRewards;
+	private MDPEquiv quotient;
+	private MDPRewards<Double> quotientRewards;
 	private int numberOfZMECs;
 
 	private static final boolean debug = false;
 
-	private ZeroRewardECQuotient(MDPEquiv<Value> quotient, MDPRewards<Value> quotientRewards, int numberOfZMECs)
+	private ZeroRewardECQuotient(MDPEquiv quotient, MDPRewards<Double> quotientRewards, int numberOfZMECs)
 	{
 		this.quotient = quotient;
 		this.quotientRewards = quotientRewards;
 		this.numberOfZMECs = numberOfZMECs;
 	}
 
-	public MDP<Value> getModel()
+	public MDP<Double> getModel()
 	{
 		return quotient;
 	}
 
-	public MDPRewards<Value> getRewards()
+	public MDPRewards<Double> getRewards()
 	{
 		return quotientRewards;
 	}
@@ -94,7 +94,7 @@ public class ZeroRewardECQuotient<Value>
 		}
 	}
 
-	public static <Value> ZeroRewardECQuotient<Value> getQuotient(PrismComponent parent, MDP<Value> mdp, BitSet restrict, MDPRewards<Value> rewards) throws PrismException
+	public static ZeroRewardECQuotient getQuotient(PrismComponent parent, MDP<Double> mdp, BitSet restrict, MDPRewards<Double> rewards) throws PrismException
 	{
 		PairPredicateInt positiveRewardChoice = (int s, int i) -> {
 			if (mdp.getEvaluator().gt(rewards.getStateReward(s), mdp.getEvaluator().zero())) {
@@ -107,7 +107,7 @@ public class ZeroRewardECQuotient<Value>
 		};
 
 		// drop positive reward choices
-		MDPDroppedChoicesCached<Value> zeroRewMDP = new MDPDroppedChoicesCached<>(mdp, positiveRewardChoice);
+		MDPDroppedChoicesCached zeroRewMDP = new MDPDroppedChoicesCached(mdp, positiveRewardChoice);
 		// compute the MECs in the zero-reward sub-MDP
 		ECComputer ecComputer = ECComputerDefault.createECComputer(parent, zeroRewMDP);
 		ecComputer.computeMECStates(restrict);
@@ -133,30 +133,30 @@ public class ZeroRewardECQuotient<Value>
 			return rv;
 		};
 
-		final MDPDroppedChoicesCached<Value> droppedZeroRewardLoops = new MDPDroppedChoicesCached<>(mdp, zeroRewardECloop);
+		final MDPDroppedChoicesCached droppedZeroRewardLoops = new MDPDroppedChoicesCached(mdp, zeroRewardECloop);
 		if (debug)
 			droppedZeroRewardLoops.exportToDotFile("zero-mec-loops-dropped.dot");
 
-		BasicModelTransformation<MDP<Value>, MDPEquiv<Value>> transform = MDPEquiv.transform(droppedZeroRewardLoops, equiv);
-		final MDPEquiv<Value> quotient = transform.getTransformedModel();
+		BasicModelTransformation<MDP<Double>, MDPEquiv> transform = MDPEquiv.transform(droppedZeroRewardLoops, equiv);
+		final MDPEquiv quotient = transform.getTransformedModel();
 
-		MDPRewards<Value> quotientRewards = new MDPRewards<Value>() {
+		MDPRewards<Double> quotientRewards = new MDPRewards<Double>() {
 			@Override
-			public Value getStateReward(int s)
+			public Double getStateReward(int s)
 			{
 				return rewards.getStateReward(s);
 			}
 
 			@Override
-			public Value getTransitionReward(int s, int i)
+			public Double getTransitionReward(int s, int i)
 			{
-				StateChoicePair mapped = quotient.mapToOriginalModel(s, i);
+				MDPEquiv.StateChoicePair mapped = quotient.mapToOriginalModel(s, i);
 				int mappedChoiceInOriginal = droppedZeroRewardLoops.mapChoiceToOriginalModel(mapped.getState(), mapped.getChoice());
 				return rewards.getTransitionReward(mapped.getState(), mappedChoiceInOriginal);
 			}
 
 			@Override
-			public MDPRewards<Value> liftFromModel(Product<?> product)
+			public MDPRewards<Double> liftFromModel(Product<?> product)
 			{
 				throw new RuntimeException("Not implemented");
 			}
@@ -173,7 +173,7 @@ public class ZeroRewardECQuotient<Value>
 			quotient.exportToDotFile("zero-mec-quotient.dot", decorators);
 		}
 
-		return new ZeroRewardECQuotient<>(quotient, quotientRewards, mecs.size());
+		return new ZeroRewardECQuotient(quotient, quotientRewards, mecs.size());
 	}
 
 }

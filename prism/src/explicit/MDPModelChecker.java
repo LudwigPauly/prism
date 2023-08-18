@@ -443,7 +443,7 @@ public class MDPModelChecker extends ProbModelChecker
 		if (numYes + numNo < n) {
 
 			if (!min && doPmaxQuotient) {
-				MDPEquiv<Double> maxQuotient = maxQuotient(mdp, yes, no);
+				MDPEquiv maxQuotient = maxQuotient(mdp, yes, no);
 				// MDPEquiv retains original state space, making the states that are not used
 				// trap states.
 				// yesInQuotient is the representative for the yes equivalence class
@@ -1409,7 +1409,7 @@ public class MDPModelChecker extends ProbModelChecker
 		// inf and target states become trap states (with dropped choices)
 		BitSet trapStates = (BitSet) target.clone();
 		trapStates.or(inf);
-		MDP<Double> cleanedMDP = new MDPDroppedAllChoices<>(mdp, trapStates);
+		MDP<Double> cleanedMDP = new MDPDroppedAllChoices(mdp, trapStates);
 
 		OptionsIntervalIteration iiOptions = OptionsIntervalIteration.from(this);
 
@@ -1455,7 +1455,7 @@ public class MDPModelChecker extends ProbModelChecker
 		// inf and target states become trap states (with dropped choices)
 		BitSet trapStates = (BitSet) target.clone();
 		trapStates.or(inf);
-		MDP<Double> cleanedMDP = new MDPDroppedAllChoices<>(mdp, trapStates);
+		MDP<Double> cleanedMDP = new MDPDroppedAllChoices(mdp, trapStates);
 
 		OptionsIntervalIteration iiOptions = OptionsIntervalIteration.from(this);
 
@@ -2155,7 +2155,7 @@ public class MDPModelChecker extends ProbModelChecker
 		// Compute rewards (if needed)
 		if (numTarget + numInf < n) {
 			
-			ZeroRewardECQuotient<Double> quotient = null;
+			ZeroRewardECQuotient quotient = null;
 			boolean doZeroMECCheckForMin = true;
 			if (min & doZeroMECCheckForMin) {
 				StopWatch zeroMECTimer = new StopWatch(mainLog);
@@ -2673,7 +2673,7 @@ public class MDPModelChecker extends ProbModelChecker
 	 * each maximal end component is collapsed to a single state,
 	 * likewise the yes and no regions, respectively.
 	 */
-	private <Value> MDPEquiv<Value> maxQuotient(MDP<Value> mdp, BitSet yes, BitSet no) throws PrismException
+	private MDPEquiv maxQuotient(MDP<Double> mdp, BitSet yes, BitSet no) throws PrismException
 	{
 		BitSet maybe = new BitSet();
 		maybe.set(0, mdp.getNumStates());
@@ -2688,8 +2688,8 @@ public class MDPModelChecker extends ProbModelChecker
 		mecs.add(no);
 
 		EquivalenceRelationInteger eq = new EquivalenceRelationInteger(mecs);
-		BasicModelTransformation<MDP<Value>, MDPEquiv<Value>> quotientTransform = MDPEquiv.transformDroppingLoops(mdp, eq);
-		MDPEquiv<Value> quotient = quotientTransform.getTransformedModel();
+		BasicModelTransformation<MDP<Double>, MDPEquiv> quotientTransform = MDPEquiv.transformDroppingLoops(mdp, eq);
+		MDPEquiv quotient = quotientTransform.getTransformedModel();
 
 		//mdp.exportToDotFile("original.dot");
 		//quotient.exportToDotFile("maxQuotient.dot");

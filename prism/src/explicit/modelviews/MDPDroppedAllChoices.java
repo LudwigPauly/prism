@@ -34,29 +34,34 @@ import java.util.Map.Entry;
 import java.util.Set;
 
 import common.iterable.EmptyIterator;
+import common.iterable.Reducible;
+import common.BitSetTools;
+import explicit.Distribution;
 import explicit.MDP;
+import explicit.MDPSimple;
 import parser.State;
 import parser.Values;
 import parser.VarList;
+import prism.PrismException;
 
 /**
  * An MDPView that takes an existing MDP and removes
  * all outgoing choices for certain states.
  */
-public class MDPDroppedAllChoices<Value> extends MDPView<Value>
+public class MDPDroppedAllChoices extends MDPView
 {
-	private MDP<Value> model;
+	private MDP<Double> model;
 	private BitSet states;
 
 
 
-	public MDPDroppedAllChoices(final MDP<Value> model, final BitSet dropped)
+	public MDPDroppedAllChoices(final MDP<Double> model, final BitSet dropped)
 	{
 		this.model = model;
 		this.states = dropped;
 	}
 
-	public MDPDroppedAllChoices(final MDPDroppedAllChoices<Value> dropped)
+	public MDPDroppedAllChoices(final MDPDroppedAllChoices dropped)
 	{
 		super(dropped);
 		model = dropped.model;
@@ -68,9 +73,9 @@ public class MDPDroppedAllChoices<Value> extends MDPView<Value>
 	//--- Cloneable ---
 
 	@Override
-	public MDPDroppedAllChoices<Value> clone()
+	public MDPDroppedAllChoices clone()
 	{
-		return new MDPDroppedAllChoices<>(this);
+		return new MDPDroppedAllChoices(this);
 	}
 
 
@@ -170,6 +175,12 @@ public class MDPDroppedAllChoices<Value> extends MDPView<Value>
 	}
 
 	@Override
+	public boolean areAllChoiceActionsUnique()
+	{
+		return model.areAllChoiceActionsUnique() ? true : super.areAllChoiceActionsUnique();
+	}
+
+	@Override
 	public Iterator<Integer> getSuccessorsIterator(final int state, final int choice)
 	{
 		if (states.get(state)) {
@@ -183,7 +194,7 @@ public class MDPDroppedAllChoices<Value> extends MDPView<Value>
 	//--- MDP ---
 
 	@Override
-	public Iterator<Entry<Integer, Value>> getTransitionsIterator(final int state, final int choice)
+	public Iterator<Entry<Integer, Double>> getTransitionsIterator(final int state, final int choice)
 	{
 		if (states.get(state)) {
 			throw new IndexOutOfBoundsException("choice index out of bounds");

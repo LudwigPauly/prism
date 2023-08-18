@@ -36,15 +36,20 @@ import java.util.PrimitiveIterator.OfInt;
 import java.util.Set;
 import java.util.function.IntUnaryOperator;
 
+import common.BitSetTools;
 import common.functions.PairPredicateInt;
 import common.IterableBitSet;
 import common.IterableStateSet;
+import common.iterable.IterableArray;
 import common.iterable.Reducible;
 import explicit.BasicModelTransformation;
+import explicit.Distribution;
 import explicit.MDP;
+import explicit.MDPSimple;
 import parser.State;
 import parser.Values;
 import parser.VarList;
+import prism.PrismException;
 
 /**
  * An MDPView that provides a quotient view
@@ -54,9 +59,9 @@ import parser.VarList;
  * for their equivalence class remain in the MDP, but their
  * choices are transferred / mapped to the representative state.
  */
-public class MDPEquiv<Value> extends MDPView<Value>
+public class MDPEquiv extends MDPView
 {
-	protected MDP<Value> model;
+	protected MDP<Double> model;
 	protected EquivalenceRelationInteger identify;
 	protected int[] numChoices;
 	protected StateChoicePair[][] originalChoices;
@@ -64,7 +69,7 @@ public class MDPEquiv<Value> extends MDPView<Value>
 
 	protected MDPEquiv(){/* only here to satisfy the compiler */}
 
-	public MDPEquiv(final MDP<Value> model, final EquivalenceRelationInteger identify)
+	public MDPEquiv(final MDP<Double> model, final EquivalenceRelationInteger identify)
 	{
 		this.model = model;
 		this.identify = identify;
@@ -105,7 +110,7 @@ public class MDPEquiv<Value> extends MDPView<Value>
 		}
 	}
 
-	public MDPEquiv(MDPEquiv<Value> mdpEquiv)
+	public MDPEquiv(MDPEquiv mdpEquiv)
 	{
 		super(mdpEquiv);
 		model = mdpEquiv.model;
@@ -120,9 +125,9 @@ public class MDPEquiv<Value> extends MDPView<Value>
 	//--- Cloneable ---
 
 	@Override
-	public MDPEquiv<Value> clone()
+	public MDPEquiv clone()
 	{
-		return new MDPEquiv<>(this);
+		return new MDPEquiv(this);
 	}
 
 
@@ -241,7 +246,7 @@ public class MDPEquiv<Value> extends MDPView<Value>
 	//--- MDP ---
 
 	@Override
-	public Iterator<Entry<Integer, Value>> getTransitionsIterator(final int state, final int choice)
+	public Iterator<Entry<Integer, Double>> getTransitionsIterator(final int state, final int choice)
 	{
 		StateChoicePair originals = mapToOriginalModelOrNull(state, choice);
 		final int originalState, originalChoice;
@@ -252,9 +257,9 @@ public class MDPEquiv<Value> extends MDPView<Value>
 			originalState = originals.state;
 			originalChoice = originals.choice;
 		}
-		Iterator<Entry<Integer, Value>> transitions = model.getTransitionsIterator(originalState, originalChoice);
+		Iterator<Entry<Integer, Double>> transitions = model.getTransitionsIterator(originalState, originalChoice);
 		if (hasTransitionToNonRepresentative.get(originalState)) {
-			return Reducible.extend(transitions).map(this::mapTransitionToRestrictedModel);
+			return new Distribution(Reducible.extend(transitions).map(this::mapToRepresentative),getEvaluator()).iterator();
 		}
 		return transitions;
 	}
@@ -287,10 +292,10 @@ public class MDPEquiv<Value> extends MDPView<Value>
 		return identify.getRepresentative(state);
 	}
 
-	public SimpleImmutableEntry<Integer, Value> mapTransitionToRestrictedModel(final Entry<Integer, Value> transition)
+	public SimpleImmutableEntry<Integer, Double> mapTransitionToRestrictedModel(final Entry<Integer, Double> transition)
 	{
 		final Integer target = identify.getRepresentative(transition.getKey());
-		final Value probability = transition.getValue();
+		final Double probability = transition.getValue();
 		return new SimpleImmutableEntry<>(target, probability);
 	}
 
@@ -316,16 +321,38 @@ public class MDPEquiv<Value> extends MDPView<Value>
 		return identify.getNonRepresentatives();
 	}
 
-	//--- static methods ---
-
-	public static <Value> BasicModelTransformation<MDP<Value>, MDPEquiv<Value>> transform(MDP<Value> model, EquivalenceRelationInteger identify)
+	public Entry<Integer, Double> mapToRepresentative(final Entry<Integer, Double> transition)
 	{
-		return new BasicModelTransformation<>(model, new MDPEquiv<>(model, identify));
+		int state          = transition.getKey();
+		int representative = identify.getRepresentative(state);
+		if (state == representative) {
+			return transition;
+		}
+		Double probability = transition.getValue();
+		return new SimpleImmutableEntry<>(representative, probability);
 	}
 
-	public static <Value> BasicModelTransformation<MDP<Value>, MDPEquiv<Value>> transformDroppingLoops(MDP<Value> model, EquivalenceRelationInteger identify)
+	//--- static methods ---
+
+	public static BasicModelTransformation<MDP<Double>, MDPEquiv> transform(MDP<Double> model, EquivalenceRelationInteger identify)
 	{
-		final MDPDroppedChoicesCached<Value> dropped = new MDPDroppedChoicesCached<>(model, new PairPredicateInt()
+		return new BasicModelTransformation<>(model, new MDPEquiv(model, identify));
+	}
+
+	public static  BasicModelTransformation<MDP<Double>, ? extends MDP<Double>> transform(MDP model, EquivalenceRelationInteger identify, boolean removeNonRepresentatives)
+	{
+		BasicModelTransformation<MDP<Double>,MDPEquiv> quotient = new BasicModelTransformation<>(model, new MDPEquiv(model, identify));
+		if (! removeNonRepresentatives) {
+			return quotient;
+		}
+		BitSet representatives = identify.getRepresentatives(model.getNumStates());
+		BasicModelTransformation<MDP<Double>, MDPRestricted> restriction = MDPRestricted.transform(quotient.getTransformedModel(), representatives, Restriction.TRANSITIVE_CLOSURE_SAFE);
+		return restriction.compose(quotient);
+	}
+
+	public static BasicModelTransformation<MDP<Double>, MDPEquiv> transformDroppingLoops(MDP<Double> model, EquivalenceRelationInteger identify)
+	{
+		final MDPDroppedChoicesCached dropped = new MDPDroppedChoicesCached(model, new PairPredicateInt()
 		{
 			@Override
 			public boolean test(final int state, final int choice)
@@ -339,7 +366,30 @@ public class MDPEquiv<Value> extends MDPView<Value>
 				return true;
 			}
 		});
-		return new BasicModelTransformation<>(model, new MDPEquiv<Value>(dropped, identify));
+		return new BasicModelTransformation<>(model, new MDPEquiv(dropped, identify));
 	}
+
+	public static class StateChoicePair
+	{
+		final int state;
+		final int choice;
+
+		protected StateChoicePair(final int state, final int choice)
+		{
+			this.state = state;
+			this.choice = choice;
+		}
+
+		public int getState()
+		{
+			return state;
+		}
+
+		public int getChoice()
+		{
+			return choice;
+		}
+	}
+
 
 }

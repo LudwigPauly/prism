@@ -1339,7 +1339,7 @@ public class DTMCModelChecker extends ProbModelChecker implements MCModelChecker
 		case DEFAULT:
 		case DSMPI:
 		{
-			MDP<Double> mdp = new MDPFromDTMC<>(cleanedDTMC);
+			MDP<Double> mdp = new MDPFromDTMC(cleanedDTMC);
 			MDPRewards<Double> mdpRewards = new MDPRewards<Double>() {
 
 				@Override
