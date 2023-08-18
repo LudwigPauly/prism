@@ -46,6 +46,7 @@ public class IterableBitSet implements FunctionalPrimitiveIterable.OfInt
 	protected final boolean clearBits;
 	protected final boolean reversed;
 	protected final int maxIndex;
+	protected final int fromIndex;
 
 	/**
 	 * Constructor for an Iterable that iterates over the set bits of {@code set}
@@ -70,7 +71,7 @@ public class IterableBitSet implements FunctionalPrimitiveIterable.OfInt
 	{
 		this(set, maxIndex, clearBits, false);
 	}
-
+	//TODO java doc
 	/**
 	 * Constructor for an Iterable that iterates over bits of the given set {@code set},
 	 * up to the maximal index given by {@code maxIndex} (optional).
@@ -82,11 +83,47 @@ public class IterableBitSet implements FunctionalPrimitiveIterable.OfInt
 	 * @param clearBits if true, iterate over the cleared bits in the BitSet
 	 * @param reversed if true, iterate in reversed order
 	 */
+
 	public IterableBitSet(BitSet set, Integer maxIndex, boolean clearBits, boolean reversed)
+	{
+		this(set, null, maxIndex, clearBits, false);
+	}
+	//TODO java doc
+	/**
+	 * Constructor for an Iterable that iterates over bits of the given set {@code set},
+	 * up to the maximal index given by {@code maxIndex} (optional).
+	 * If {@code clearBits} is {@code true}, iterate over the cleared bits instead of the set bits
+	 * (requires {@code maxIndex} to be non-null).
+	 * If {@code reversed} is set, iterate in reverse order (highest to lowest).
+	 * @param set the underlying BitSet
+	 * @param fromIndex the minimal index for iteration
+	 * @param maxIndex the maximal index for iteration (negative = iterate over the empty set, {@code null} = no restrictions)
+	 */
+
+	public IterableBitSet(BitSet set, Integer fromIndex, Integer maxIndex)
+	{
+		this(set, fromIndex, maxIndex, true, false);
+	}
+
+	/**
+	 * Constructor for an Iterable that iterates over bits of the given set {@code set},
+	 * up to the maximal index given by {@code maxIndex} (optional).
+	 * If {@code clearBits} is {@code true}, iterate over the cleared bits instead of the set bits
+	 * (requires {@code maxIndex} to be non-null).
+	 * If {@code reversed} is set, iterate in reverse order (highest to lowest).
+	 * @param set the underlying BitSet
+	 * @param fromIndex the minimal index for iteration
+	 * @param maxIndex the maximal index for iteration (negative = iterate over the empty set, {@code null} = no restrictions)
+	 * @param clearBits if true, iterate over the cleared bits in the BitSet
+	 * @param reversed if true, iterate in reversed order
+	 */
+
+	public IterableBitSet(BitSet set, Integer fromIndex, Integer maxIndex, boolean clearBits, boolean reversed)
 	{
 		Objects.requireNonNull(set);
 		this.set = set;
 		this.maxIndex = maxIndex == null ? Integer.MAX_VALUE : Math.max(maxIndex, -1);
+		this.fromIndex = fromIndex == null ? 0 : fromIndex;
 		this.clearBits = clearBits;
 		this.reversed = reversed;
 	}
@@ -95,7 +132,7 @@ public class IterableBitSet implements FunctionalPrimitiveIterable.OfInt
 	private class SetBitsIterator implements FunctionalPrimitiveIterator.OfInt
 	{
 		private int current = -1;
-		private int next = set.nextSetBit(0);
+		private int next = set.nextSetBit(fromIndex);
 
 		@Override
 		public boolean hasNext()
@@ -171,7 +208,7 @@ public class IterableBitSet implements FunctionalPrimitiveIterable.OfInt
 	private class ClearBitsIterator implements FunctionalPrimitiveIterator.OfInt
 	{
 		private int current = -1;
-		private int next = set.nextClearBit(0);
+		private int next = set.nextClearBit(fromIndex);
 
 		@Override
 		public boolean hasNext()
@@ -272,6 +309,16 @@ public class IterableBitSet implements FunctionalPrimitiveIterable.OfInt
 	}
 
 	/**
+	 * Get an IterableBitSet that iterates over the bits of {@code set} that are set.
+	 * @param set a BitSet
+	 * @return an IterableBitSet over the set bits
+	 */
+	public static IterableBitSet getSetBits(BitSet set, int fromIndex, int maxIndex)
+	{
+		return new IterableBitSet(set, fromIndex, maxIndex, false, false);
+	}
+
+	/**
 	 * Get an IterableBitSet that iterates over the bits of {@code set} that are set,
 	 * in reverse order (highest to lowest index).
 	 * @param set a BitSet
@@ -292,6 +339,18 @@ public class IterableBitSet implements FunctionalPrimitiveIterable.OfInt
 	{
 		return new IterableBitSet(set, maxIndex, true);
 	}
+
+	/**
+	 * Get an IterableBitSet that iterates over the cleared bits of {@code set}, up to {@code maxIndex}
+	 * @param set a BitSet
+	 * @param maxIndex the maximal index
+	 * @return an IterableBitSet over the cleared bits
+	 */
+	public static IterableBitSet getClearBits(BitSet set, int fromIndex, int maxIndex)
+	{
+		return new IterableBitSet(set, fromIndex, maxIndex, true, false);
+	}
+
 
 	/**
 	 * Get an IterableBitSet that iterates over the cleared bits of {@code set}, up to {@code maxIndex},

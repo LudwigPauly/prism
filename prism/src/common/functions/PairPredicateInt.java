@@ -27,6 +27,9 @@
 
 package common.functions;
 
+import java.util.function.IntPredicate;
+
+
 /**
  * Functional interface for a predicate (int, int) -> boolean.
  */
@@ -37,6 +40,11 @@ public interface PairPredicateInt
 	 * Evaluates this predicate on the given arguments.
 	 */
 	boolean test(int i, int j);
+
+	default IntPredicate curry(int element1)
+	{
+		return element2 -> test(element1, element2);
+	}
 
 	/**
 	 * Returns a predicate that represents the logical negation of this predicate.
