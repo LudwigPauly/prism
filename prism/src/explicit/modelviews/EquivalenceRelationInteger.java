@@ -30,9 +30,12 @@ package explicit.modelviews;
 import java.util.BitSet;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.function.IntPredicate;
 
+import common.BitSetTools;
 import common.functions.PairPredicateInt;
 import common.IterableBitSet;
+import common.iterable.FunctionalPrimitiveIterable;
 
 /**
  * An object representing an equivalence relation between integers (typically state indices),
@@ -80,6 +83,15 @@ public class EquivalenceRelationInteger implements PairPredicateInt
 		final BitSet equivalenceClass = classes.get(i);
 		return equivalenceClass == null ? i : equivalenceClass.nextSetBit(0);
 	}
+	public BitSet getRepresentatives(int upperBound)
+	{
+		return BitSetTools.complement(nonRepresentatives, upperBound);
+	}
+
+	public FunctionalPrimitiveIterable.OfInt getRepresentatives(FunctionalPrimitiveIterable.OfInt integers)
+	{
+		return integers.filter((IntPredicate) this::isRepresentative);
+	}
 
 	public BitSet getEquivalenceClass(final int i)
 	{
@@ -105,6 +117,8 @@ public class EquivalenceRelationInteger implements PairPredicateInt
 	{
 		return nonRepresentatives;
 	}
+
+
 
 	public boolean isRepresentative(final int i)
 	{

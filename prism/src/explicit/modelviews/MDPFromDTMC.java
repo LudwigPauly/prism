@@ -45,18 +45,18 @@ import prism.PrismException;
  * An MDPView that takes an existing DTMC and pretends it
  * is actually an MDP, i.e., in every state there is a single choice.
  */
-public class MDPFromDTMC<Value> extends MDPView<Value>
+public class MDPFromDTMC extends MDPView
 {
-	private DTMC<Value> model;
+	private DTMC<Double> model;
 
 
 
-	public MDPFromDTMC(final DTMC<Value> model)
+	public MDPFromDTMC(final DTMC<Double> model)
 	{
 		this.model = model;
 	}
 
-	public MDPFromDTMC(final MDPFromDTMC<Value> mdp)
+	public MDPFromDTMC(final MDPFromDTMC mdp)
 	{
 		super(mdp);
 		model = mdp.model;
@@ -67,9 +67,9 @@ public class MDPFromDTMC<Value> extends MDPView<Value>
 	//--- Cloneable ---
 
 	@Override
-	public MDPFromDTMC<Value> clone()
+	public MDPFromDTMC clone()
 	{
-		return new MDPFromDTMC<>(this);
+		return new MDPFromDTMC(this);
 	}
 
 
@@ -188,12 +188,12 @@ public class MDPFromDTMC<Value> extends MDPView<Value>
 	//--- MDP ---
 
 	@Override
-	public Iterator<Entry<Integer, Value>> getTransitionsIterator(final int state, final int choice)
+	public Iterator<Entry<Integer, Double>> getTransitionsIterator(final int state, final int choice)
 	{
 		if (choice > 0) {
 			throw new IndexOutOfBoundsException("choice index out of bounds");
 		}
-		final Iterator<Entry<Integer, Value>> transitions = model.getTransitionsIterator(state);
+		final Iterator<Entry<Integer, Double>> transitions = model.getTransitionsIterator(state);
 		if (!transitions.hasNext()) {
 			throw new IndexOutOfBoundsException("choice index out of bounds");
 		}
@@ -217,25 +217,4 @@ public class MDPFromDTMC<Value> extends MDPView<Value>
 		model = DTMCAlteredDistributions.fixDeadlocks(model);
 	}
 
-
-
-	//--- static methods ---
-
-	public static void main(final String[] args) throws PrismException
-	{
-		final DTMCSimple<Double> original = new DTMCSimple<>(4);
-		original.addInitialState(1);
-		original.setProbability(0, 1, 0.1);
-		original.setProbability(0, 2, 0.9);
-		original.setProbability(1, 2, 0.2);
-		original.setProbability(1, 3, 0.8);
-		original.setProbability(2, 1, 0.3);
-		original.setProbability(2, 2, 0.7);
-		original.findDeadlocks(false);
-		System.out.println(original);
-
-		final MDP<Double> mdp = new MDPFromDTMC<>(original);
-		mdp.findDeadlocks(true);
-		System.out.println(mdp);
-	}
 }
