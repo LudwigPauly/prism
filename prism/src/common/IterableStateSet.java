@@ -28,11 +28,13 @@
 package common;
 
 import java.util.BitSet;
+import java.util.function.IntPredicate;
 
 import common.iterable.EmptyIterable;
 import common.iterable.FunctionalPrimitiveIterable;
 import common.iterable.FunctionalPrimitiveIterator;
 import common.iterable.Range;
+import common.iterable.FilteringIterable;
 
 /**
  * A convenience wrapper around IterableBitSet that handles the three cases of
@@ -63,6 +65,22 @@ public class IterableStateSet implements FunctionalPrimitiveIterable.OfInt
 	public IterableStateSet(BitSet setOfStates, int numStates)
 	{
 		this(setOfStates, numStates, false);
+	}
+
+	/**
+	 * Constructor (iterate over the all states filtered by predicate or over all states)
+	 *
+	 * @param setOfStates the AbstractPredicateInteger filtering the state indices in the model.
+	 *                    {@code null} signifies "all states in the model"
+	 * @param numStates the number of states in the model, i.e., with indices 0..numStates-1
+	 */
+	public IterableStateSet(IntPredicate predicate, int numStates)
+	{
+		if (predicate == null) {
+			this.setOfStates = new Range(numStates);
+		} else {
+			this.setOfStates = new FilteringIterable.OfInt(new Range(numStates), predicate);
+		}
 	}
 
 	/**
