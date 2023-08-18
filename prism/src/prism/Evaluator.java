@@ -38,6 +38,8 @@ import parser.ast.Expression;
 import parser.type.TypeDouble;
 import parser.type.TypeInterval;
 
+import java.util.BitSet;
+
 /**
  * Interface specifying operations that need to be supported for classes used to
  * store values for probabilities/rewards/etc. in generic storage classes,
@@ -88,6 +90,16 @@ public interface Evaluator<Value>
 	 */
 	public Value one();
 
+
+	/**
+	 * Get the value infinity.
+	 */
+	public Value infinity();
+
+	/**
+	 * Get the value negative infinity.
+	 */
+	public Value negative_infinity();
 	/**
 	 * Check if a value {@code x} is equal to zero.
 	 */
@@ -127,6 +139,11 @@ public interface Evaluator<Value>
 	 * Compute {@code x} divided by {@code y}.
 	 */
 	public Value divide(Value x, Value y);
+
+	/**
+	 * Compute maximum of {@code x} and {@code y}?
+	 */
+	public Value max(Value x, Value y);
 
 	/**
 	 * Is {@code x} greater than {@code y}?
@@ -268,6 +285,18 @@ public interface Evaluator<Value>
 		}
 
 		@Override
+		public Double infinity()
+		{
+			return Double.POSITIVE_INFINITY;
+		}
+
+		@Override
+		public Double negative_infinity()
+		{
+			return Double.NEGATIVE_INFINITY;
+		}
+
+		@Override
 		public boolean isZero(Double x)
 		{
 			return x == 0.0;
@@ -314,6 +343,11 @@ public interface Evaluator<Value>
 		public Double divide(Double x, Double y)
 		{
 			return x / y;
+		}
+		@Override
+		public Double max(Double x, Double y)
+		{
+			return Double.max(x,y);
 		}
 
 		@Override
@@ -419,6 +453,18 @@ public interface Evaluator<Value>
 		}
 
 		@Override
+		public BigRational infinity()
+		{
+			return BigRational.INF;
+		}
+
+		@Override
+		public BigRational negative_infinity()
+		{
+			return BigRational.MINF;
+		}
+
+		@Override
 		public boolean isZero(BigRational x)
 		{
 			return x.equals(BigRational.ZERO);
@@ -464,6 +510,12 @@ public interface Evaluator<Value>
 		public BigRational divide(BigRational x, BigRational y)
 		{
 			return x.divide(y);
+		}
+
+		@Override
+		public BigRational max(BigRational x, BigRational y)
+		{
+			return x.max(y);
 		}
 
 		@Override
@@ -555,6 +607,18 @@ public interface Evaluator<Value>
 		}
 
 		@Override
+		public Function infinity()
+		{
+			return functionFactory.getInf();
+		}
+
+		@Override
+		public Function negative_infinity()
+		{
+			return functionFactory.getMInf();
+		}
+
+		@Override
 		public boolean isZero(Function x)
 		{
 			// Technically, not quite right since it could miss some cases
@@ -585,7 +649,6 @@ public interface Evaluator<Value>
 			throw new UnsupportedOperationException();
 		}
 
-
 		@Override
 		public Function add(Function x, Function y)
 		{
@@ -608,6 +671,12 @@ public interface Evaluator<Value>
 		public Function divide(Function x, Function y)
 		{
 			return x.divide(y);
+		}
+
+		@Override
+		public Function max(Function x, Function y)
+		{
+			throw new UnsupportedOperationException();
 		}
 
 		@Override
@@ -696,6 +765,18 @@ public interface Evaluator<Value>
 		}
 
 		@Override
+		public Interval<Double> infinity()
+		{
+			return new Interval<Double>(Double.POSITIVE_INFINITY, Double.POSITIVE_INFINITY);
+		}
+
+		@Override
+		public Interval<Double> negative_infinity()
+		{
+			return new Interval<Double>(Double.NEGATIVE_INFINITY, Double.NEGATIVE_INFINITY);
+		}
+
+		@Override
 		public boolean isZero(Interval<Double> x)
 		{
 			return x.getLower() == 0.0 && x.getUpper() == 0.0;
@@ -753,6 +834,12 @@ public interface Evaluator<Value>
 		{
 			// TODO
 			throw new UnsupportedOperationException();
+		}
+
+		@Override
+		public Interval<Double> max(Interval<Double> x, Interval<Double> y)
+		{
+			return x.getLower() >= y.getUpper() ? x : y;
 		}
 
 		@Override
