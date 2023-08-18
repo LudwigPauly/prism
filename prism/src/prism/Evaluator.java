@@ -102,7 +102,12 @@ public interface Evaluator<Value>
 	 * Check if a value {@code x} is finite (not +/- infinite or NaN).
 	 */
 	public boolean isFinite(Value x);
-	
+
+	/**
+	 * Return absolute of value {@code x}.
+	 */
+	public Value absolute(Value x);
+
 	/**
 	 * Compute the sum of {@code x} and {@code y}.
 	 */
@@ -282,6 +287,12 @@ public interface Evaluator<Value>
 		}
 
 		@Override
+		public Double absolute(Double x)
+		{
+			return x >= 0.0 ? x : -x;
+		}
+
+		@Override
 		public Double add(Double x, Double y)
 		{
 			return x + y;
@@ -426,6 +437,12 @@ public interface Evaluator<Value>
 		}
 
 		@Override
+		public BigRational absolute(BigRational x)
+		{
+			return x.abs();
+		}
+
+		@Override
 		public BigRational add(BigRational x, BigRational y)
 		{
 			return x.add(y);
@@ -562,6 +579,14 @@ public interface Evaluator<Value>
 		}
 
 		@Override
+		public Function absolute(Function x)
+		{
+			// TODO implement for different functions
+			throw new UnsupportedOperationException();
+		}
+
+
+		@Override
 		public Function add(Function x, Function y)
 		{
 			return x.add(y);
@@ -687,6 +712,12 @@ public interface Evaluator<Value>
 		public boolean isFinite(Interval<Double> x)
 		{
 			return Double.isFinite(x.getLower()) && Double.isFinite(x.getUpper());
+		}
+
+		@Override
+		public Interval<Double> absolute(Interval<Double> x)
+		{
+			throw new UnsupportedOperationException();
 		}
 
 		@Override
