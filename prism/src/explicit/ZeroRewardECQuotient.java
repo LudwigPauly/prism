@@ -150,7 +150,7 @@ public class ZeroRewardECQuotient<Value>
 			@Override
 			public Value getTransitionReward(int s, int i)
 			{
-				StateChoicePair mapped = quotient.mapToOriginalModel(s, i);
+				MDPEquiv.StateChoicePair mapped = quotient.mapToOriginalModel(s, i);
 				int mappedChoiceInOriginal = droppedZeroRewardLoops.mapChoiceToOriginalModel(mapped.getState(), mapped.getChoice());
 				return rewards.getTransitionReward(mapped.getState(), mappedChoiceInOriginal);
 			}

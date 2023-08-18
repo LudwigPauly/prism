@@ -27,11 +27,9 @@
 
 package explicit.modelviews;
 
+import java.io.File;
 import java.math.BigInteger;
-import java.util.BitSet;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.PrimitiveIterator.OfInt;
 
 import common.iterable.FilteringIterable;
@@ -47,6 +45,8 @@ import prism.Prism;
 import prism.PrismComponent;
 import prism.PrismException;
 import prism.PrismLog;
+import prism.PrismFileLog;
+import prism.PrismSettings;
 
 /**
  * Base class for an DTMCView or MDPView,
@@ -105,6 +105,38 @@ public abstract class ModelView<Value> implements Model<Value>
 		return deadlockStates.get(state);
 	}
 
+	@Override
+	public boolean isSuccessor(final int s1, final int s2)
+	{
+		for (Iterator<Integer> successors = getSuccessorsIterator(s1); successors.hasNext();) {
+			if (s2 == successors.next()) {
+				return true;
+			}
+		}
+		return false;
+	}
+
+	@Override
+	public boolean allSuccessorsInSet(final int state, final BitSet set)
+	{
+		for (Iterator<Integer> successors = getSuccessorsIterator(state); successors.hasNext();) {
+			if (!set.get(successors.next())) {
+				return false;
+			}
+		}
+		return true;
+	}
+
+	@Override
+	public boolean someSuccessorsInSet(final int state, final BitSet set)
+	{
+		for (Iterator<Integer> successors = getSuccessorsIterator(state); successors.hasNext();) {
+			if (set.get(successors.next())) {
+				return true;
+			}
+		}
+		return false;
+	}
 
 	@Override
 	public void findDeadlocks(final boolean fix) throws PrismException
@@ -135,6 +167,26 @@ public abstract class ModelView<Value> implements Model<Value>
 		if (deadlocks.hasNext()) {
 			throw new PrismException(getModelType() + " has a deadlock in state " + deadlocks.nextInt());
 		}
+	}
+
+	@Override
+	public void exportToPrismExplicit(final String baseFilename) throws PrismException
+	{
+		exportToPrismExplicitTra(baseFilename + ".tra");
+	}
+
+	@Override
+	public void exportToPrismExplicitTra(final String filename) throws PrismException
+	{
+		try (PrismFileLog log = PrismFileLog.create(filename)) {
+			exportToPrismExplicitTra(log, PrismSettings.DEFAULT_EXPORT_MODEL_PRECISION);
+		}
+	}
+
+	@Override
+	public void exportToPrismExplicitTra(final File file) throws PrismException
+	{
+		exportToPrismExplicitTra(file.getPath());
 	}
 
 	@Override
@@ -199,9 +251,28 @@ public abstract class ModelView<Value> implements Model<Value>
 		predecessorRelation = null;
 	}
 
+
+	@Override
+	public BitSet getLabelStates(String name)
+	{
+		return labels.containsKey(name) ? labels.get(name) : null;
+	}
+
+	@Override
+	public Set<String> getLabels()
+	{
+		return labels.keySet();
+	}
+
 	@Override public void addLabel(String name, BitSet states)
 	{
 		labels.put(name, states);
+	}
+
+	@Override
+	public boolean hasLabel(String name)
+	{
+		return labels.containsKey(name);
 	}
 
 	@Override public String addUniqueLabel(String prefix, BitSet labelStates)
@@ -216,6 +287,8 @@ public abstract class ModelView<Value> implements Model<Value>
 	}
 
 	//--- instance methods ---
+
+	protected abstract void exportTransitionsToDotFile(final int state, final PrismLog out);
 
 	protected abstract void fixDeadlocks();
 

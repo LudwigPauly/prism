@@ -36,15 +36,20 @@ import java.util.PrimitiveIterator.OfInt;
 import java.util.Set;
 import java.util.function.IntUnaryOperator;
 
+import common.BitSetTools;
 import common.functions.PairPredicateInt;
 import common.IterableBitSet;
 import common.IterableStateSet;
+import common.iterable.IterableArray;
 import common.iterable.Reducible;
 import explicit.BasicModelTransformation;
+import explicit.Distribution;
 import explicit.MDP;
+import explicit.MDPSimple;
 import parser.State;
 import parser.Values;
 import parser.VarList;
+import prism.PrismException;
 
 /**
  * An MDPView that provides a quotient view
@@ -323,6 +328,17 @@ public class MDPEquiv<Value> extends MDPView<Value>
 		return new BasicModelTransformation<>(model, new MDPEquiv<>(model, identify));
 	}
 
+	public static  <Value> BasicModelTransformation<MDP<Value>, ? extends MDP<Value>> transform(MDP model, EquivalenceRelationInteger identify, boolean removeNonRepresentatives)
+	{
+		BasicModelTransformation<MDP<Value>,MDPEquiv<Value>> quotient = new BasicModelTransformation<>(model, new MDPEquiv(model, identify));
+		if (! removeNonRepresentatives) {
+			return quotient;
+		}
+		BitSet representatives = identify.getRepresentatives(model.getNumStates());
+		BasicModelTransformation<MDP<Value>, MDPRestricted<Value>> restriction = MDPRestricted.transform(quotient.getTransformedModel(), representatives, Restriction.TRANSITIVE_CLOSURE_SAFE);
+		return restriction.compose(quotient);
+	}
+
 	public static <Value> BasicModelTransformation<MDP<Value>, MDPEquiv<Value>> transformDroppingLoops(MDP<Value> model, EquivalenceRelationInteger identify)
 	{
 		final MDPDroppedChoicesCached<Value> dropped = new MDPDroppedChoicesCached<>(model, new PairPredicateInt()
@@ -341,5 +357,28 @@ public class MDPEquiv<Value> extends MDPView<Value>
 		});
 		return new BasicModelTransformation<>(model, new MDPEquiv<Value>(dropped, identify));
 	}
+
+	public static class StateChoicePair
+	{
+		final int state;
+		final int choice;
+
+		protected StateChoicePair(final int state, final int choice)
+		{
+			this.state = state;
+			this.choice = choice;
+		}
+
+		public int getState()
+		{
+			return state;
+		}
+
+		public int getChoice()
+		{
+			return choice;
+		}
+	}
+
 
 }

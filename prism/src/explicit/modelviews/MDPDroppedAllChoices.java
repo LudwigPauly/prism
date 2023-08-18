@@ -34,10 +34,15 @@ import java.util.Map.Entry;
 import java.util.Set;
 
 import common.iterable.EmptyIterator;
+import common.iterable.Reducible;
+import common.BitSetTools;
+import explicit.Distribution;
 import explicit.MDP;
+import explicit.MDPSimple;
 import parser.State;
 import parser.Values;
 import parser.VarList;
+import prism.PrismException;
 
 /**
  * An MDPView that takes an existing MDP and removes
@@ -167,6 +172,12 @@ public class MDPDroppedAllChoices<Value> extends MDPView<Value>
 			throw new IndexOutOfBoundsException("choice index out of bounds");
 		}
 		return model.getAction(state, choice);
+	}
+
+	@Override
+	public boolean areAllChoiceActionsUnique()
+	{
+		return model.areAllChoiceActionsUnique() ? true : super.areAllChoiceActionsUnique();
 	}
 
 	@Override

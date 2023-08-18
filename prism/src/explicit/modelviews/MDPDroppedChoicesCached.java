@@ -40,6 +40,7 @@ import explicit.MDP;
 import parser.State;
 import parser.Values;
 import parser.VarList;
+import prism.Evaluator;
 
 /**
  * An MDPView that takes an existing MDP and removes certain choices.
@@ -227,8 +228,9 @@ public class MDPDroppedChoicesCached<Value> extends MDPView<Value>
 			@Override
 			public boolean test(int state, int choice)
 			{
-				final Distribution<Value> distribution = new Distribution<>(model.getTransitionsIterator(state, choice), model.getEvaluator());
-				return !model.getEvaluator().geq(distribution.sum(), model.getEvaluator().one());
+				Evaluator<Value> evaluator = model.getEvaluator();
+				final Distribution<Value> distribution = new Distribution<>(model.getTransitionsIterator(state, choice), evaluator);
+				return !evaluator.geq(distribution.sum(), evaluator.one());
 			}
 		};
 		return new MDPDroppedChoicesCached<>(model, denormalizedChoices);

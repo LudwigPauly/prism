@@ -37,11 +37,17 @@ import java.util.Set;
 import java.util.function.IntFunction;
 import java.util.function.IntPredicate;
 
+import common.BitSetTools;
+import common.iterable.Reducible;
 import common.iterable.SingletonIterator;
+import common.functions.MappingInt;
+import explicit.Distribution;
 import explicit.MDP;
+import explicit.MDPSimple;
 import parser.State;
 import parser.Values;
 import parser.VarList;
+import prism.PrismException;
 
 /**
  * An MDPView that takes an existing MDP and
@@ -184,6 +190,13 @@ public class MDPAdditionalChoices<Value> extends MDPView<Value>
 		final List<Object> additional = actions.apply(state);
 		return (additional == null) ?  null : additional.get(choice - numOriginalChoices);
 	}
+
+	@Override
+	public boolean areAllChoiceActionsUnique()
+	{
+		return model.areAllChoiceActionsUnique() && super.areAllChoiceActionsUnique();
+	}
+
 
 
 	//--- MDP ---

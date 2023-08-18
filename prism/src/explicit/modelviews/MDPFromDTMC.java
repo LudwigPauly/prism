@@ -217,25 +217,4 @@ public class MDPFromDTMC<Value> extends MDPView<Value>
 		model = DTMCAlteredDistributions.fixDeadlocks(model);
 	}
 
-
-
-	//--- static methods ---
-
-	public static void main(final String[] args) throws PrismException
-	{
-		final DTMCSimple<Double> original = new DTMCSimple<>(4);
-		original.addInitialState(1);
-		original.setProbability(0, 1, 0.1);
-		original.setProbability(0, 2, 0.9);
-		original.setProbability(1, 2, 0.2);
-		original.setProbability(1, 3, 0.8);
-		original.setProbability(2, 1, 0.3);
-		original.setProbability(2, 2, 0.7);
-		original.findDeadlocks(false);
-		System.out.println(original);
-
-		final MDP<Double> mdp = new MDPFromDTMC<>(original);
-		mdp.findDeadlocks(true);
-		System.out.println(mdp);
-	}
 }
