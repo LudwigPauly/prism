@@ -1317,7 +1317,7 @@ public class DTMCModelChecker extends ProbModelChecker implements MCModelChecker
 		// inf and target states become trap states (with self-loops)
 		BitSet trapStates = (BitSet) target.clone();
 		trapStates.or(inf);
-		DTMCAlteredDistributions<Double> cleanedDTMC = DTMCAlteredDistributions.addSelfLoops(dtmc, trapStates);
+		DTMCAlteredDistributions cleanedDTMC = DTMCAlteredDistributions.addSelfLoops(dtmc, trapStates);
 
 		OptionsIntervalIteration iiOptions = OptionsIntervalIteration.from(this);
 
