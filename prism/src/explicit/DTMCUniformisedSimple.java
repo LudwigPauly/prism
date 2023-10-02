@@ -50,7 +50,7 @@ import explicit.rewards.MCRewards;
 public class DTMCUniformisedSimple<Value> extends DTMCExplicit<Value>
 {
 	// Parent CTMC
-	protected CTMCSimple<Value> ctmc;
+	protected CTMC<Value> ctmc;
 	// Uniformisation rate
 	protected Value q;
 	// Number of extra transitions added (just for stats)
@@ -59,14 +59,15 @@ public class DTMCUniformisedSimple<Value> extends DTMCExplicit<Value>
 	/**
 	 * Constructor: create from CTMC and uniformisation rate q.
 	 */
-	public DTMCUniformisedSimple(CTMCSimple<Value> ctmc, Value q)
+	public DTMCUniformisedSimple(CTMC<Value> ctmc, Value q)
 	{
 		this.ctmc = ctmc;
 		this.numStates = ctmc.getNumStates();
 		this.q = q;
 		numExtraTransitions = 0;
 		for (int i = 0; i < numStates; i++) {
-			if (!ctmc.getTransitions(i).contains(i) && !getEvaluator().geq(ctmc.getTransitions(i).sumAllBut(i), q)) {
+			if (!new Distribution<>(ctmc.getTransitionsIterator(i), getEvaluator()).contains(i) && !getEvaluator().geq(
+					new Distribution<>(ctmc.getTransitionsIterator(i), getEvaluator()).sumAllBut(i), q)) {
 				numExtraTransitions++;
 			}
 		}
@@ -221,7 +222,7 @@ public class DTMCUniformisedSimple<Value> extends DTMCExplicit<Value>
 	public double mvMultSingle(int s, double vect[])
 	{
 		double qDouble = getEvaluator().toDouble(q);
-		Distribution<Value> distr = ctmc.getTransitions(s);
+		Distribution<Value> distr =  new Distribution<>(ctmc.getTransitionsIterator(s), getEvaluator());
 		double sum = 0.0, d = 0.0;
 		for (Map.Entry<Integer, Value> e : distr) {
 			int k = e.getKey();
@@ -244,7 +245,7 @@ public class DTMCUniformisedSimple<Value> extends DTMCExplicit<Value>
 	public double mvMultJacSingle(int s, double vect[])
 	{
 		double qDouble = getEvaluator().toDouble(q);
-		Distribution<Value> distr = ctmc.getTransitions(s);
+		Distribution<Value> distr = new Distribution<>(ctmc.getTransitionsIterator(s), getEvaluator());
 		double sum = 0.0, d = 0.0;
 		for (Map.Entry<Integer, Value> e : distr) {
 			int k = e.getKey();
