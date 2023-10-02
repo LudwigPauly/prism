@@ -44,7 +44,7 @@ import prism.PrismNotSupportedException;
 public class DTMCEmbeddedSimple<Value> extends DTMCExplicit<Value>
 {
 	// Parent CTMC
-	protected CTMCSimple<Value> ctmc;
+	protected CTMC<Value> ctmc;
 	// Exit rates vector
 	protected List<Value> exitRates;
 	// Number of extra transitions added (just for stats)
@@ -53,7 +53,7 @@ public class DTMCEmbeddedSimple<Value> extends DTMCExplicit<Value>
 	/**
 	 * Constructor: create from CTMC.
 	 */
-	public DTMCEmbeddedSimple(CTMCSimple<Value> ctmc)
+	public DTMCEmbeddedSimple(CTMC<Value> ctmc)
 	{
 		// Initialise/copy basic model info
 		initialise(ctmc.getNumStates());
@@ -63,7 +63,7 @@ public class DTMCEmbeddedSimple<Value> extends DTMCExplicit<Value>
 		exitRates = new ArrayList<>(numStates);
 		numExtraTransitions = 0;
 		for (int i = 0; i < numStates; i++) {
-			Value sum = ctmc.getTransitions(i).sum();
+			Value sum = ctmc.getExitRate(i);
 			exitRates.add(sum);
 			if (getEvaluator().isZero(sum))
 				numExtraTransitions++;
@@ -283,7 +283,7 @@ public class DTMCEmbeddedSimple<Value> extends DTMCExplicit<Value>
 
 	public double mvMultSingle(int s, double vect[])
 	{
-		Distribution<Value> distr = ctmc.getTransitions(s);
+		Distribution<Value> distr = new Distribution<>(ctmc.getTransitionsIterator(s), getEvaluator());
 		double d = 0.0;
 		double er = getEvaluator().toDouble(exitRates.get(s));
 		// Exit rate 0: prob 1 self-loop
@@ -306,7 +306,7 @@ public class DTMCEmbeddedSimple<Value> extends DTMCExplicit<Value>
 	@Override
 	public double mvMultJacSingle(int s, double vect[])
 	{
-		Distribution<Value> distr = ctmc.getTransitions(s);
+		Distribution<Value> distr =  new Distribution<>(ctmc.getTransitionsIterator(s), getEvaluator());
 		double diag = 0.0, d = 0.0;
 		double er = getEvaluator().toDouble(exitRates.get(s));
 		// Exit rate 0: prob 1 self-loop
@@ -336,7 +336,7 @@ public class DTMCEmbeddedSimple<Value> extends DTMCExplicit<Value>
 
 	public double mvMultRewSingle(int s, double vect[], MCRewards<Double> mcRewards)
 	{
-		Distribution<Value> distr = ctmc.getTransitions(s);
+		Distribution<Value> distr =  new Distribution<>(ctmc.getTransitionsIterator(s), getEvaluator());
 		double er = getEvaluator().toDouble(exitRates.get(s));
 		double d = 0;
 		// Exit rate 0: prob 1 self-loop
@@ -360,7 +360,7 @@ public class DTMCEmbeddedSimple<Value> extends DTMCExplicit<Value>
 	//@Override
 	public double mvMultRewJacSingle(int s, double vect[], MCRewards<Double> mcRewards)
 	{
-		Distribution<Value> distr = ctmc.getTransitions(s);
+		Distribution<Value> distr =  new Distribution<>(ctmc.getTransitionsIterator(s), getEvaluator());
 		double diag = 0.0, d = 0.0;
 		double er = getEvaluator().toDouble(exitRates.get(s));
 		// Exit rate 0: prob 1 self-loop
