@@ -27,21 +27,24 @@
 
 package explicit.modelviews;
 
-import java.util.AbstractMap;
-import java.util.BitSet;
-import java.util.Iterator;
-import java.util.List;
+import java.util.*;
 import java.util.Map.Entry;
-import java.util.Set;
+import java.util.function.Function;
 import java.util.function.IntFunction;
 import java.util.function.Predicate;
 
-import common.iterable.Reducible;
-import common.iterable.SingletonIterator;
+import common.BitSetTools;
+import common.IterableBitSet;
+import common.iterable.*;
+import explicit.DTMCSimple;
+import explicit.Distribution;
 import parser.State;
 import parser.Values;
 import parser.VarList;
 import explicit.DTMC;
+import prism.Evaluator;
+import prism.PrismException;
+import prism.PrismLog;
 
 /**
  * A view of a DTMC where for selected states the transitions are changed.
@@ -67,7 +70,8 @@ public class DTMCAlteredDistributions<Value> extends DTMCView<Value>
 	{
 		this.model = model;
 		this.mapping = mapping;
-		nonZero = (Entry<Integer, Value> e) -> { return model.getEvaluator().gt(e.getValue(), model.getEvaluator().zero()); };
+		Evaluator<Value> evaluator = getEvaluator();
+		nonZero = (Entry<Integer, Value> e) -> { return evaluator.gt(e.getValue(), evaluator.zero()); };
 	}
 
 	public DTMCAlteredDistributions(final DTMCAlteredDistributions<Value> altered)
@@ -75,7 +79,8 @@ public class DTMCAlteredDistributions<Value> extends DTMCView<Value>
 		super(altered);
 		model = altered.model;
 		mapping = altered.mapping;
-		nonZero = (Entry<Integer, Value> e) -> { return model.getEvaluator().gt(e.getValue(), model.getEvaluator().zero()); };
+		Evaluator <Value> evaluator = getEvaluator();
+		nonZero = (Entry<Integer, Value> e) -> { return evaluator.gt(e.getValue(), evaluator.zero()); };
 	}
 
 
@@ -158,8 +163,6 @@ public class DTMCAlteredDistributions<Value> extends DTMCView<Value>
 		return model.hasLabel(name);
 	}
 
-
-
 	//--- DTMC ---
 
 	@Override
@@ -219,4 +222,82 @@ public class DTMCAlteredDistributions<Value> extends DTMCView<Value>
 		};
 		return new DTMCAlteredDistributions<>(model, addLoops);
 	}
+
+	public static DTMCAlteredDistributions deadlockStates(final DTMC model, final BitSet states)
+	{
+		final IntFunction<Iterator<Entry<Integer, Double>>> deadlocks = new IntFunction<Iterator<Entry<Integer, Double>>>()
+		{
+			@Override
+			public Iterator<Entry<Integer, Double>> apply(final int state)
+			{
+				if (states.get(state)) {
+					return Collections.emptyIterator();
+				}
+				return null;
+			}
+		};
+		return new DTMCAlteredDistributions(model, deadlocks);
+	}
+
+	@Deprecated
+	public static<Value> DTMC<Value> identifyStates(final DTMC<Value> model, final Iterable<BitSet> equivalenceClasses)
+	{
+		final EquivalenceRelationInteger identify = new EquivalenceRelationInteger(equivalenceClasses);
+		final BitSet representatives = identify.getRepresentatives(model.getNumStates());
+
+		// 1. attach all transitions of an equivalence class to its representative
+		final IntFunction<Iterator<Entry<Integer, Value>>> reattach = new IntFunction<Iterator<Entry<Integer, Value>>>()
+		{
+			@Override
+			public Iterator<Entry<Integer, Value>> apply(final int state)
+			{
+				if (! identify.isRepresentative(state)) {
+					return EmptyIterator.of();
+				}
+				final BitSet equivalenceClass = identify.getEquivalenceClassOrNull(state);
+				if (equivalenceClass == null) {
+					return null;
+				}
+				final FunctionalIterable<Iterator<Entry<Integer, Value>>> transitionIterators =
+						new IterableBitSet(equivalenceClass).map((int s) -> model.getTransitionsIterator(s));
+				return new ChainedIterator.Of<>(transitionIterators.iterator()).distinct();
+			}
+		};
+		final DTMC<Value> reattached = new DTMCAlteredDistributions<>(model, reattach);
+
+		// 2. redirect transitions to representatives
+		final Function<Entry<Integer, Value>, Entry<Integer, Value>> redirectTransition = new Function<Entry<Integer, Value>, Entry<Integer, Value>>()
+		{
+			@Override
+			public final Entry<Integer, Value> apply(final Entry<Integer, Value> transition)
+			{
+				final int target = transition.getKey();
+				if (identify.isRepresentative(target)) {
+					return transition;
+				}
+				final int representative = identify.getRepresentative(target);
+				final Value probability = transition.getValue();
+				return new AbstractMap.SimpleImmutableEntry<>(representative, probability);
+			}
+		};
+		final IntFunction<Iterator<Entry<Integer, Value>>> redirectDistribution = new IntFunction<Iterator<Entry<Integer, Value>>>()
+		{
+			@Override
+			public Iterator<Entry<Integer, Value>> apply(final int state)
+			{
+				if (reattached.allSuccessorsInSet(state, representatives)) {
+					return null;
+				}
+				final Iterator<Entry<Integer, Value>> transitions = reattached.getTransitionsIterator(state);
+				final Iterator<Entry<Integer, Value>> redirected = new MappingIterator.ObjToObj<>(transitions, redirectTransition);
+				// use Distribution to dedupe successors
+				return new Distribution<>(redirected, model.getEvaluator()).iterator();
+			}
+		};
+		final DTMC<Value> redirected = new DTMCAlteredDistributions<>(reattached, redirectDistribution);
+
+		// 3. drop equivalence classes except for the representatives
+		return new DTMCRestricted<>(redirected, representatives, Restriction.STRICT);
+	}
+
 }

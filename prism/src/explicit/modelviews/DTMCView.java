@@ -47,7 +47,7 @@ import explicit.SuccessorsIterator;
  * meta-data on the model have to be provided as well. For examples,
  * see the sub-classes contained in this package.
  */
-public abstract class DTMCView<Value> extends ModelView<Value> implements DTMC<Value>, Cloneable
+public abstract class DTMCView<Value> extends MCView<Value> implements DTMC<Value>, Cloneable
 {
 	public DTMCView()
 	{
@@ -63,43 +63,5 @@ public abstract class DTMCView<Value> extends ModelView<Value> implements DTMC<V
 
 	//--- Object ---
 
-	@Override
-	public String toString()
-	{
-		final IntFunction<Entry<Integer, Distribution<Value>>> getDistribution = new IntFunction<Entry<Integer, Distribution<Value>>>()
-		{
-			@Override
-			public final Entry<Integer, Distribution<Value>> apply(final int state)
-			{
-				final Distribution<Value> distribution = new Distribution<Value>(getTransitionsIterator(state), getEvaluator());
-				return new AbstractMap.SimpleImmutableEntry<>(state, distribution);
-			}
-		};
-		String s = "trans: [ ";
-		IterableStateSet states = new IterableStateSet(getNumStates());
-		Iterator<Entry<Integer, Distribution<Value>>> distributions = states.iterator().map(getDistribution);
-		while (distributions.hasNext()) {
-			final Entry<Integer, Distribution<Value>> dist = distributions.next();
-			s += dist.getKey() + ": " + dist.getValue();
-			if (distributions.hasNext()) {
-				s += ", ";
-			}
-		}
-		return s + " ]";
-	}
 
-
-
-	//--- Model ---
-
-	@Override
-	public SuccessorsIterator getSuccessors(final int state)
-	{
-		final Iterator<Entry<Integer, Value>> transitions = getTransitionsIterator(state);
-
-		return SuccessorsIterator.from(new PrimitiveIterator.OfInt() {
-			public boolean hasNext() {return transitions.hasNext();}
-			public int nextInt() {return transitions.next().getKey();}
-		}, true);
-	}
 }
