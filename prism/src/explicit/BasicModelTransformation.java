@@ -28,6 +28,9 @@
 package explicit;
 
 import java.util.function.IntFunction;
+import java.util.function.IntUnaryOperator;
+
+import java.util.BitSet;
 
 import prism.PrismException;
 
@@ -36,11 +39,12 @@ import prism.PrismException;
  */
 public class BasicModelTransformation<OM extends Model<?>, TM extends Model<?>> implements ModelTransformation<OM, TM>
 {
-	public static final IntFunction<Integer> IDENTITY = Integer::valueOf;
+	public static final IntUnaryOperator IDENTITY = Integer::valueOf;
 
 	protected final OM originalModel;
 	protected final TM transformedModel;
-	protected final IntFunction<Integer> mapToTransformedModel;
+	protected BitSet transformedStatesOfInterest;
+	protected final IntUnaryOperator mapToTransformedModel;
 
 	protected final int numberOfStates;
 
@@ -50,15 +54,34 @@ public class BasicModelTransformation<OM extends Model<?>, TM extends Model<?>> 
 		this(originalModel, transformedModel, IDENTITY);
 	}
 
+	public BasicModelTransformation(final OM originalModel, final TM transformedModel, final BitSet transformedStatesOfInterest)
+	{
+		this(originalModel, transformedModel, transformedStatesOfInterest, IDENTITY);
+	}
+
+	public BasicModelTransformation(final OM originalModel, final TM transformedModel, final BitSet transformedStatesOfInterest, int[] mapToTransformedModel)
+	{
+		this(originalModel, transformedModel, transformedStatesOfInterest, state -> (state == UNDEF) ? UNDEF : mapToTransformedModel[state]);
+	}
+
 	/**
 	 * Constructor for a model transformation where the state mapping is given by a function
 	 */
-	public BasicModelTransformation(final OM originalModel, final TM transformedModel, final IntFunction<Integer> mapToTransformedModel)
+	public BasicModelTransformation(final OM originalModel, final TM transformedModel, final IntUnaryOperator mapToTransformedModel)
 	{
 		this.originalModel               = originalModel;
 		this.transformedModel            = transformedModel;
 		this.numberOfStates              = originalModel.getNumStates();
 		this.mapToTransformedModel       = mapToTransformedModel;
+	}
+
+	public BasicModelTransformation(final OM originalModel, final TM transformedModel, final BitSet transformedStatesOfInterest, final IntUnaryOperator mapToTransformedModel)
+	{
+		this.originalModel               = originalModel;
+		this.transformedModel            = transformedModel;
+		this.numberOfStates              = originalModel.getNumStates();
+		this.mapToTransformedModel       = mapToTransformedModel;
+		setTransformedStatesOfInterest(transformedStatesOfInterest);
 	}
 
 	@Override
@@ -73,9 +96,40 @@ public class BasicModelTransformation<OM extends Model<?>, TM extends Model<?>> 
 		return transformedModel;
 	}
 
+
+	public BasicModelTransformation<OM, TM> setTransformedStatesOfInterest(BitSet transformedStatesOfInterest)
+	{
+		if (transformedStatesOfInterest != null && transformedStatesOfInterest.length() > transformedModel.getNumStates()) {
+			throw new IndexOutOfBoundsException("State set must be subset of transformed model's state space");
+		}
+		this.transformedStatesOfInterest = transformedStatesOfInterest;
+		return this;
+	}
+
+	@Override
+	public int mapToTransformedModel(final int state)
+	{
+		if (state >= numberOfStates) {
+			throw new IndexOutOfBoundsException("State index does not belong to original model.");
+		}
+		return mapToTransformedModel.applyAsInt(state);
+	}
+
 	@Override
 	public StateValues projectToOriginalModel(final StateValues sv) throws PrismException
 	{
 		return sv.mapToNewModel(originalModel, mapToTransformedModel);
+	}
+
+	public <M extends Model<?>> BasicModelTransformation<M, TM> compose(final ModelTransformation<M, ? extends OM> inner)
+	{
+		IntUnaryOperator innerMapping;
+		if (inner instanceof BasicModelTransformation) {
+			innerMapping = ((BasicModelTransformation<?,?>) inner).mapToTransformedModel;
+		} else {
+			innerMapping = inner::mapToTransformedModel;
+		}
+		IntUnaryOperator composed = mapToTransformedModel. compose(innerMapping);
+		return new BasicModelTransformation<>(inner.getOriginalModel(), transformedModel, transformedStatesOfInterest, composed);
 	}
 }

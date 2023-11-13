@@ -35,6 +35,7 @@ import java.util.BitSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.function.IntFunction;
+import java.util.function.IntUnaryOperator;
 
 import common.IterableStateSet;
 import common.iterable.FunctionalPrimitiveIterator;
@@ -369,11 +370,11 @@ public class StateValues implements StateVector, Iterable<Object>
 	 * @param newModel The new model
 	 * @param reverseStateMapping Mapping from indices of the new model to the old one
 	 */
-	public StateValues mapToNewModel(Model<?> newModel, IntFunction<Integer> reverseStateMapping) throws PrismException
+	public StateValues mapToNewModel(Model<?> newModel, IntUnaryOperator reverseStateMapping) throws PrismException
 	{
 		int numStates = newModel.getNumStates();
 		StateValues sv = create(type, i -> {
-			final Integer j = reverseStateMapping.apply(i);
+			final Integer j = reverseStateMapping.applyAsInt(i);
 			if (j != null) {
 				if (j >= numStates) {
 					throw new IndexOutOfBoundsException("State index error when mapping between models");

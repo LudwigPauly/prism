@@ -103,6 +103,9 @@ public abstract class Product<M extends Model<?>> implements ModelTransformation
 		return originalModel;
 	}
 
+	@Override
+	public int mapToTransformedModel(int state){throw new UnsupportedOperationException();}
+
 	/**
 	 * Lifts a BitSet over states in the automaton to a BitSet
 	 * over states in the product model: A bit is set in the
